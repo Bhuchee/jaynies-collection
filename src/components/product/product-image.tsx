@@ -6,7 +6,8 @@ import { useState } from "react";
 type ProductImageProps = {
   src: string | null;
   alt: string;
-  categoryLabel: string;
+  /** Optional: the placeholder card shows it in small caps when given. */
+  categoryLabel?: string;
   className?: string;
 };
 
@@ -36,9 +37,11 @@ export function ProductImage({
             strokeWidth={1.5}
             aria-hidden="true"
           />
-          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
-            {categoryLabel}
-          </span>
+          {categoryLabel ? (
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+              {categoryLabel}
+            </span>
+          ) : null}
         </div>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- the product file is optional, so an intrinsic img with an onError fallback to the placeholder card is used instead of next/image.

@@ -60,7 +60,8 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-white/10">
-        <p className="mx-auto w-full max-w-6xl px-4 pb-20 pt-5 text-sm text-ink-muted md:pb-5">
+        {/* White at 70% over Onyx is about 9.5:1, which clears AA. */}
+        <p className="mx-auto w-full max-w-6xl px-4 pb-20 pt-5 text-sm text-white/70 md:pb-5">
           © 2026 Jaynie&apos;s Collection. All rights reserved.
         </p>
       </div>

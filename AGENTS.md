@@ -68,11 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 3 (shop UI) COMPLETE. The full storefront is built against the seeded catalogue and `npm run lint` and `npm run build` both pass.
+- Current phase: 4 (cart and checkout) CODE COMPLETE. `/cart`, `/checkout`, `lib/validation.ts`, `lib/order-number.ts` and the `placeOrder` Server Action are built, and `npm run lint` and `npm run build` both pass with zero warnings.
 - Production URL: _not deployed yet_
-- Done: phases 0, 1, 2 and 3. Layout (header with search, footer, mobile bottom nav, delivery band), home, `/shop` with category and gender filters, `/product/[slug]`, `/contact`, the placeholder image component, `lib/queries.ts`, `lib/money.ts`, `lib/catalog.ts`, `lib/site.ts`, `lib/delivery.ts` and the persisted Zustand cart.
+- Done: phases 0 to 4. The brand logo and the 11 product photos Brian supplied are now in `public/brand/` and `public/products/`, so the header, footer, hero and product cards show real photography.
 - Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
-- Next: phase 4 (the `/cart` page, `/checkout`, `lib/validation.ts` and the `placeOrder` Server Action).
+- Next: phase 5 (`lib/mailgun.ts` and the branded confirmation email, wired into the marked seam in `actions/place-order.ts`).
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -105,10 +105,18 @@ public/brand/, public/products/
 - 2026-10-02: The cart badge count reads the store through `useSyncExternalStore`, so the server and the first client render agree and there is no hydration mismatch.
 - 2026-10-02: The delivery band marquee is a CSS keyframe in `globals.css`, switched off under `prefers-reduced-motion` so the text simply stops.
 - 2026-10-02: The best sellers are the three rows flagged in FRD section 4, and the "Save" pill is computed per product rather than hard-coded to the "Save ₦7,000" example in DESIGN.md section 5.
+- 2026-10-02: The footer copyright line now uses `text-white/70` on Onyx, about 9.5:1, which clears AA. `--ink-muted` (section 5C5C5C on 0A0A0A) was roughly 2.5:1 and failed.
+- 2026-10-02: react-hook-form uses a small `zodResolver` adapter in `lib/validation.ts`, because `@hookform/resolvers` is not on the locked stack. The same Zod schema runs in the browser and again in the Server Action.
+- 2026-10-02: `useCartHydrated()` uses `useSyncExternalStore` with no-op subscriptions. The cart lives in localStorage, so the server cannot read it, and `/cart` and `/checkout` render a short loading line until hydration before showing the real cart or redirecting to `/cart`.
+- 2026-10-02: `placeOrder` normalises instead of rejecting: the country is forced to Nigeria for the Nigerian zones and the state is forced to FCT for Abuja, because FRD F7 says those fields are "set" rather than "entered". A tampered country for a Nigerian zone is still rejected by the schema.
+- 2026-10-02: Step 9 of FRD F8 (calling `sendOrderConfirmation`) is a marked seam in `actions/place-order.ts`. Phase 5 fills it in and stamps `email_sent_at`, which stays null until then.
+- 2026-10-02: Brian's images were dragged into `public/` with mangled names (`publicbrandlogo.png`, `publicproductsshirt-mosaic .webp`, and so on). They were renamed to the exact DESIGN.md section 4 and 9 paths so the components pick them up with no code change.
 
 ## Known issues
-- No real images yet. `public/brand/` and `public/products/` hold only `.gitkeep`, so the logo wordmark, the hero slots and every product image are currently rendering their fallbacks. Dropping the DESIGN.md files in switches them over with no code change.
-- DESIGN.md section 6 puts the footer copyright line in `--ink-muted` on the Onyx background, which is a low contrast pairing. It is built as documented, so Jaynie may want to change the token there.
+- The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
+- `public/brand/logo-dark-bg.png` is really a JPEG that was renamed, because the drag-and-drop gave it a `.jpg` name. It renders, but it should be re-exported as a true PNG.
+- Three stray files `public/products/image (9).png`, `image (14).png` and `image (16).png` are not identified and are not committed. Two of them match the byte size of already-imported photos, so they are probably duplicates.
+- 10 products still have `image_url` null, so they show the DESIGN.md placeholder card.
 - The 360px acceptance in FRD F1 (no horizontal scroll) was not checked in a real browser. Brian should open the site at 360px and confirm, especially the chips, the sticky add-to-cart bar and the bottom nav.
 - The first Vercel deploy has not happened yet, so production Google sign-in is unproven and `NEXT_PUBLIC_SITE_URL` is still the localhost template value. Deploy in phase 2 and set it to the real domain.
 - The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.

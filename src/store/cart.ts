@@ -108,3 +108,24 @@ export function useCartCount(): number {
     getServerCartCount,
   );
 }
+
+function subscribeToNothing(): () => void {
+  return () => {};
+}
+
+function hasHydrated(): boolean {
+  return true;
+}
+
+function hasNotHydrated(): boolean {
+  return false;
+}
+
+/*
+  False while the server renders, true in the browser. Pages that read the
+  persisted cart wait for this before showing an empty state, so a saved cart
+  never flashes as empty during hydration.
+*/
+export function useCartHydrated(): boolean {
+  return useSyncExternalStore(subscribeToNothing, hasHydrated, hasNotHydrated);
+}
