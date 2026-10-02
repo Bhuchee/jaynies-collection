@@ -68,11 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 1 (database) COMPLETE. Schema, migration and the 21-product seed are live on Neon, and `npm run lint` and `npm run build` both pass.
+- Current phase: 2 (auth) CODE COMPLETE, first Vercel deploy pending. Auth.js with Google, database sessions, `/signin`, the account menu with sign-out and the protected `/orders` stub are built and verified against Neon. `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phase 0 (scaffold) and phase 1 (database). `src/db/schema.ts`, `src/db/index.ts`, `drizzle.config.ts`, `drizzle/0000_freezing_sunspot.sql` applied to Neon, `src/db/seed.ts` upserting all 21 products.
-- Row counts on Neon: products 21, orders 0, order_items 0.
-- Next: phase 2 (Auth.js with Google, `/signin`, account menu with sign-out, protected `/orders` stub, first Vercel deploy). Needs `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` and a published Google consent screen.
+- Done: phases 0, 1 and 2. `src/auth.ts` (Google + DrizzleAdapter + explicit table mappings + `session.strategy = "database"`), `src/app/api/auth/[...nextauth]/route.ts`, `src/app/signin/page.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/account-menu.tsx`, `src/components/ui/brand-logo.tsx`, `src/components/icons/google.tsx`, `src/app/orders/page.tsx`.
+- Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
+- Next: phase 3 (shop UI: layout, home, shop, product page, contact, placeholder images), after Brian's first Vercel deploy and a production Google sign-in test.
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -93,8 +93,15 @@ public/brand/, public/products/
 - 2026-10-02: The seed staggers `products.created_at` from a fixed base date, so "the 8 newest" is deterministic and re-seeding is idempotent.
 - 2026-10-02: `drizzle.config.ts` and `src/db/seed.ts` read `.env.local` with Node's built-in `process.loadEnvFile`, so no `dotenv` dependency was added.
 - 2026-10-02: Product descriptions were written by the builder because FRD section 4 supplies none and the column is NOT NULL. Jaynie should review the wording.
+- 2026-10-02: Auth.js runs with `trustHost: true` in `src/auth.ts` instead of the `AUTH_TRUST_HOST` env var, because the app sits behind the Vercel proxy and a missing trust flag is a production-only failure.
+- 2026-10-02: The Google brand mark is an inline SVG in `components/icons/google.tsx` and keeps Google's own four brand colours. DESIGN.md section 1 rule 2 requires brand marks as inline SVGs, and a brand mark's colours are intrinsic to it, so this is the only hex outside `globals.css`.
+- 2026-10-02: The `/signin` page only accepts a relative `callbackUrl` (it must start with a single `/`), so the page cannot be abused as an open redirect.
+- 2026-10-02: The header shipped in phase 2 is deliberately minimal (brand mark plus account menu). Phase 3 replaces it with the full DESIGN.md section 6 header and the mobile bottom nav.
+- 2026-10-02: `components/ui/brand-logo.tsx` is a client component so a missing brand file can fall back to a text wordmark through `onError`. An `fs.existsSync` check was rejected because `public/` is served from the CDN and is not guaranteed to exist in the serverless filesystem.
 
 ## Known issues
+- The first Vercel deploy has not happened yet, so production Google sign-in is unproven and `NEXT_PUBLIC_SITE_URL` is still the localhost template value. Deploy in phase 2 and set it to the real domain.
+- The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.
 - The 21 product descriptions are builder-written copy awaiting Jaynie's review.
 - 10 products have `image_url` null (the FRD "no photo yet" rows), so they show the DESIGN.md placeholder card.
 - WhatsApp number is a placeholder (2348000000000).
