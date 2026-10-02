@@ -68,18 +68,29 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 0 (scaffold). Docs are agreed and the code hasn't started.
+- Current phase: 0 (scaffold) COMPLETE. Docs committed, app scaffolded, stack installed, tokens and Poppins in place, `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: PRD.md, FRD.md, DESIGN.md, AGENTS.md
-- Next: run `create-next-app` (TS, Tailwind, App Router, src dir, ESLint), commit the docs, create the GitHub repo
+- Done: PRD.md, FRD.md, DESIGN.md, AGENTS.md, Next.js 16 App Router scaffold, Tailwind v4 tokens, Poppins, folder structure, `.env.example`, `.gitignore`
+- Next: phase 1 (Drizzle schema, Neon connection, migrations, 21-product seed). Needs `DATABASE_URL` from Neon first.
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
 - 2026-10-02: No payment step. Jaynie confirms payment on WhatsApp.
 - 2026-10-02: The cart lives in localStorage. Orders live in the DB.
 - 2026-10-02: Bespoke and custom measurements are removed for v1. Sizes are S/M/L only.
+- 2026-10-02: Tailwind v4 (installed by create-next-app). DESIGN.md tokens are CSS variables in `globals.css` and are mapped to Tailwind through `@theme inline`, so there is no `tailwind.config.ts`.
+- 2026-10-02: The build runs as 8 phases (0 to 7). PRD phase 8 (buffer, README, submission form) folds into phase 7.
+- 2026-10-02: Product search is IN scope (F13) despite the PRD out-of-scope list. The word "Search" was removed from that list.
+- 2026-10-02: `verification_tokens` keeps the FRD plural name, so `DrizzleAdapter` gets explicit table mappings.
+- 2026-10-02: Brand and product images are code-only fallbacks until Brian drops the real files in `public/brand/` and `public/products/`. Components read the exact DESIGN.md paths and switch over automatically. No integration is mocked.
+- 2026-10-02: `gender=men` returns men plus unisex, and `gender=women` returns women plus unisex.
+- 2026-10-02: The `hoodie-sets` filter chip is labelled "Hoodies & Sets" in the UI. The slug stays `hoodie-sets`.
+- 2026-10-02: The cart badge shows the total quantity of items, not the number of lines.
+- 2026-10-02: Lists order by `created_at desc, name asc` for a stable grid.
 
 ## Known issues
 - WhatsApp number is a placeholder (2348000000000).
 - T-shirt and polo prices are placeholders for Jaynie to confirm.
-- 10 product images are still to be generated (DESIGN.md §9).
+- 10 product images are still to be generated (DESIGN.md §9), and the 13 provided photos plus the brand logos and hero cut-outs are not in `public/` yet, so fallbacks are in use.
+- The remote was renamed from `bhuchee` to `Bhuchee`; `origin` on this machine points at the new URL. GitHub handles the redirect either way.
+- The folder had no `.git` directory when phase 0 started, so the repo was initialised here and the docs were pushed as the root commit.

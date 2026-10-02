@@ -66,7 +66,7 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 - Online payments (Paystack, Flutterwave, or Stripe)
 - An admin dashboard. Products are seeded by script.
 - Stock tracking. Every item is made to order.
-- Search, wishlists, reviews, newsletter, and coupon codes
+- Wishlists, reviews, newsletter, and coupon codes
 - The "Download app" section from the design reference
 - Automatic international shipping rates
 
@@ -111,10 +111,12 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 | 4 | Cart and checkout, plus the place-order Server Action that saves the order | 21:00 |
 | 5 | Mailgun confirmation email | 21:45 |
 | 6 | My Orders list and detail, plus the persistence test | 22:15 |
-| 7 | Production environment variables, full end-to-end test on production, fixes | 23:15 |
-| 8 | Buffer, README, submission form | 23:59 |
+| 7 | Production environment variables, full end-to-end test on production, fixes, README, submission form | 23:15 |
+| 8 | Buffer | 23:59 |
 
 **Rule:** deploy early (phase 2) so production-only problems with OAuth redirects, environment variables, and Mailgun show up before 23:00.
+
+**Update (2 Oct 2026):** the build is run as 8 phases (0 to 7). PRD phase 8 (buffer, README, submission form) is folded into phase 7 (see the Decisions log in AGENTS.md and PRD section 10).
 
 ## 8. Human-only setup (Brian, can run in parallel)
 
@@ -143,3 +145,4 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 ## 10. Change log
 
 - v1 (2 Oct 2026): Initial agreed scope. Bespoke removed. No payment step. Brand and UI follow Brian's hero design.
+- v1.1 (2 Oct 2026): The build runs as 8 phases (0 to 7). PRD phase 8 (buffer, README, submission form) is folded into phase 7. Product search is IN scope (F13), so "Search" was removed from the out-of-scope list. Removed the leftover SHOP_NOTIFY_EMAIL references; the owner order-copy email was cut.
