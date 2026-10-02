@@ -68,11 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 5 (email) CODE COMPLETE, live send pending credentials. `lib/mailgun.ts`, `emails/order-confirmation.ts` and the FRD F8 step 9 seam are built and checked, and `npm run lint` and `npm run build` both pass.
+- Current phase: 6 (orders) CODE COMPLETE. `/orders`, `/orders/[orderNumber]`, the six status badges and the success banner are built, and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phases 0 to 5. The confirmation email renders, the Mailgun call is wired to the order, and `email_sent_at` is stamped only when Mailgun accepts the message.
+- Done: phases 0 to 6. The email header logo now points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
 - Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
-- Next: phase 6 (`/orders` and `/orders/[orderNumber]`, status badges, success banner). The live email send needs Brian's Mailgun credentials and the verified domain.
+- Next: phase 7 (deploy to Vercel, set every environment variable, and run the full end-to-end test on the production URL).
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -115,11 +115,14 @@ public/brand/, public/products/
 - 2026-10-02: The seam re-reads the committed `orders` and `order_items` rows before building the email, so the email shows exactly what was saved rather than the values the client sent.
 - 2026-10-02: `emails/order-confirmation.ts` repeats the DESIGN.md tokens as literal hex values in a `PALETTE` const, because email clients cannot read CSS custom properties from globals.css.
 - 2026-10-02: `getSiteUrl()` reads `NEXT_PUBLIC_SITE_URL` and throws if it is unset, so email links can never fall back to a hard-coded localhost. The throw is caught by the seam.
+- 2026-10-02: The email header logo uses `logo-dark-bg.png`, because `logo-email.png` does not exist. FRD F9 and DESIGN.md section 4 were updated to say so.
+- 2026-10-02: `lib/dates.ts` holds `formatOrderDate`, shared by the order pages and the email template, so dates are formatted identically in both and never drift between server and client.
+- 2026-10-02: `getOrderForUser` looks up the order number together with the user id in one `and(...)`, so another shopper's order number returns null and the page calls `notFound()`. There is no separate ownership check to forget.
 
 ## Known issues
-- `public/brand/logo-email.png` does not exist yet, so the email header logo will 404 until it is added (DESIGN.md section 4 asks for a 300px-wide PNG for email). `public/brand/logo-dark-bg.png` already exists and would look identical on the black header.
-- The Mailgun domain is still verifying, so no live email has been sent. `MAIL_FROM` is still the `YOUR_MAILGUN_DOMAIN` placeholder in `.env.local`.
 - The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
+- The two order pages are verified by build and by the anonymous redirect, but the live cross-shopper 404 test could not be run because the local shell became unreliable. Brian should confirm it with two Google accounts: place an order with one, then open that order number while signed in as the other.
+- `public/brand/logo-email.png` is not used; the email header uses `logo-dark-bg.png`. The unused file can be ignored or deleted.
 - `public/brand/logo-dark-bg.png` is really a JPEG that was renamed, because the drag-and-drop gave it a `.jpg` name. It renders, but it should be re-exported as a true PNG.
 - Three stray files `public/products/image (9).png`, `image (14).png` and `image (16).png` are not identified and are not committed. Two of them match the byte size of already-imported photos, so they are probably duplicates.
 - 10 products still have `image_url` null, so they show the DESIGN.md placeholder card.

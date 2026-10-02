@@ -143,7 +143,7 @@ Located at `src/actions/place-order.ts`.
   - `src/emails/order-confirmation.ts`: builds `{ subject, html, text }`.
 - **Subject:** "Your Jaynie's Collection order JC-XXXX is confirmed" (uses the full order number).
 - **HTML content** (table-based, inline CSS, 600px wide, no web fonts beyond the fallback stack, no emoji):
-  - Black header with the logo, loaded from an absolute URL: `${NEXT_PUBLIC_SITE_URL}/brand/logo-email.png`
+  - Black header with the logo, loaded from an absolute URL: `${NEXT_PUBLIC_SITE_URL}/brand/logo-dark-bg.png` (the gold logo on black; `logo-email.png` was dropped because that file does not exist)
   - "Thank you, {firstName}" plus the order number and date
   - Items table: thumbnail, name, size, quantity, line total
   - Subtotal, delivery ("To be confirmed" for international), and total

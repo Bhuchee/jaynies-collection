@@ -1,6 +1,13 @@
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
-import { products, type Product } from "@/db/schema";
+import {
+  orderItems,
+  orders,
+  products,
+  type Order,
+  type OrderItem,
+  type Product,
+} from "@/db/schema";
 import type { ShopFilters } from "./catalog";
 
 /*
@@ -75,4 +82,104 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .limit(1);
 
   return product ?? null;
+}
+
+/*
+  FRD F10 and AGENTS.md rule 4. Every order query is scoped to the signed-in
+  user's id, so one shopper can never see another shopper's order.
+*/
+export type OrderSummary = {
+  id: string;
+  orderNumber: string;
+  status: Order["status"];
+  createdAt: Date;
+  totalKobo: number;
+  itemCount: number;
+  firstImageUrl: string | null;
+};
+
+/** The signed-in shopper's orders, newest first, with a first-item thumbnail. */
+export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> {
+  const rows = await db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      status: orders.status,
+      createdAt: orders.createdAt,
+      totalKobo: orders.totalKobo,
+    })
+    .from(orders)
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt));
+
+  if (rows.length === 0) return [];
+
+  const items = await db
+    .select({
+      orderId: orderItems.orderId,
+      imageUrl: orderItems.imageUrl,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(
+      inArray(
+        orderItems.orderId,
+        rows.map((row) => row.id),
+      ),
+    );
+
+  const byOrder = new Map<
+    string,
+    { itemCount: number; firstImageUrl: string | null }
+  >();
+
+  for (const item of items) {
+    const current = byOrder.get(item.orderId);
+    if (!current) {
+      byOrder.set(item.orderId, {
+        itemCount: item.quantity,
+        firstImageUrl: item.imageUrl,
+      });
+      continue;
+    }
+    current.itemCount += item.quantity;
+  }
+
+  return rows.map((row) => {
+    const summary = byOrder.get(row.id);
+    return {
+      ...row,
+      itemCount: summary?.itemCount ?? 0,
+      firstImageUrl: summary?.firstImageUrl ?? null,
+    };
+  });
+}
+
+/**
+  FRD F10. The order number is looked up together with the user id, so another
+  shopper's order number resolves to null and the page becomes a 404.
+*/
+export async function getOrderForUser(
+  orderNumber: string,
+  userId: string,
+): Promise<{ order: Order; items: OrderItem[] } | null> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.orderNumber, orderNumber),
+        eq(orders.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!order) return null;
+
+  const items = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id));
+
+  return { order, items };
 }

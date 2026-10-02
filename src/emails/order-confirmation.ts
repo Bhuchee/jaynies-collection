@@ -1,5 +1,6 @@
 import type { DeliveryZone } from "@/db/schema";
 import { sendEmail } from "@/lib/mailgun";
+import { formatOrderDate } from "@/lib/dates";
 import { DELIVERY_ZONE_LABELS } from "@/lib/delivery";
 import { formatNaira } from "@/lib/money";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, WHATSAPP_NUMBER, WHATSAPP_URL } from "@/lib/site";
@@ -60,27 +61,14 @@ export type OrderConfirmationContent = {
   text: string;
 };
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 /** Rule 7: the absolute base URL always comes from the environment. */
 export function getSiteUrl(): string {
   const value = process.env.NEXT_PUBLIC_SITE_URL;
 
   if (!value) {
-    throw new Error("NEXT_PUBLIC_SITE_URL is not set, so email links are unknown.");
+    throw new Error(
+      "NEXT_PUBLIC_SITE_URL is not set, so email links are unknown.",
+    );
   }
 
   return value.replace(/\/+$/, "");
@@ -98,10 +86,6 @@ export function escapeHtml(value: string): string {
 function firstNameOf(recipientName: string): string {
   const first = recipientName.trim().split(/\s+/)[0] ?? "";
   return first || "there";
-}
-
-function formatOrderDate(date: Date): string {
-  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 function absoluteAsset(path: string, siteUrl: string): string {
@@ -135,7 +119,7 @@ export function buildOrderConfirmation(
   data: OrderConfirmationData,
 ): OrderConfirmationContent {
   const siteUrl = getSiteUrl();
-  const logoUrl = `${siteUrl}/brand/logo-email.png`;
+  const logoUrl = `${siteUrl}/brand/logo-dark-bg.png`;
   const orderUrl = `${siteUrl}/orders/${data.orderNumber}`;
   const greeting = escapeHtml(firstNameOf(data.recipientName));
   const orderDate = formatOrderDate(data.createdAt);

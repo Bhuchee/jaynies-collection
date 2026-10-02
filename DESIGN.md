@@ -54,7 +54,7 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
 
 - `logo.png`: the gold "JAYNIE" logo on a transparent background. Used in the header at 36px high on mobile and 44px on desktop.
 - `logo-dark-bg.png`: the gold logo on black. Used in the footer and the email header.
-- `logo-email.png`: a 300px-wide PNG for the email.
+- `logo-email.png`: not used. The confirmation email header uses `logo-dark-bg.png`, which already exists and is the gold logo on black.
 - **Motif:** the needle and thread. Use it as a thin `--gold` curved SVG line as an occasional divider. Use it sparingly, at most once per page.
 
 ## 5. Components
