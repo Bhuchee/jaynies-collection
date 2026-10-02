@@ -1,0 +1,196 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+/*
+  FRD section 3. Money is always an integer number of kobo (NGN 1 = 100 kobo).
+  Our own tables use camelCase keys mapped to snake_case columns; the Auth.js
+  tables keep the canonical adapter column names so the adapter needs no patches.
+*/
+
+export const productCategoryEnum = pgEnum("product_category", [
+  "shirts",
+  "hoodie-sets",
+  "tees-polos",
+  "bottoms",
+  "ankara",
+]);
+
+export const productGenderEnum = pgEnum("product_gender", [
+  "men",
+  "women",
+  "unisex",
+]);
+
+export const orderStatusEnum = pgEnum("order_status", [
+  "placed",
+  "awaiting_quote",
+  "confirmed",
+  "shipped",
+  "delivered",
+  "cancelled",
+]);
+
+export const deliveryZoneEnum = pgEnum("delivery_zone", [
+  "abuja",
+  "nigeria",
+  "international",
+]);
+
+/* ---------------------------------------------------------------- Auth.js */
+
+export const users = pgTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+    primaryKey({ columns: [account.provider, account.providerAccountId] }),
+  ],
+);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (verificationToken) => [
+    primaryKey({
+      columns: [verificationToken.identifier, verificationToken.token],
+    }),
+  ],
+);
+
+/* -------------------------------------------------------------- Catalogue */
+
+export const products = pgTable("products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: productCategoryEnum("category").notNull(),
+  gender: productGenderEnum("gender").notNull(),
+  priceKobo: integer("price_kobo").notNull(),
+  compareAtKobo: integer("compare_at_kobo"),
+  imageUrl: text("image_url"),
+  sizes: text("sizes").array().notNull().default(sql`'{S,M,L}'`),
+  isBestSeller: boolean("is_best_seller").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/* ----------------------------------------------------------------- Orders */
+
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey(),
+    orderNumber: text("order_number").notNull().unique(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: orderStatusEnum("status").notNull().default("placed"),
+    deliveryZone: deliveryZoneEnum("delivery_zone").notNull(),
+    subtotalKobo: integer("subtotal_kobo").notNull(),
+    deliveryFeeKobo: integer("delivery_fee_kobo"),
+    totalKobo: integer("total_kobo").notNull(),
+    recipientName: text("recipient_name").notNull(),
+    phone: text("phone").notNull(),
+    addressLine: text("address_line").notNull(),
+    city: text("city").notNull(),
+    state: text("state").notNull(),
+    country: text("country").notNull(),
+    note: text("note"),
+    customerEmail: text("customer_email").notNull(),
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (order) => [index("orders_user_id_idx").on(order.userId)],
+);
+
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id),
+    productName: text("product_name").notNull(),
+    imageUrl: text("image_url"),
+    size: text("size").notNull(),
+    unitPriceKobo: integer("unit_price_kobo").notNull(),
+    quantity: integer("quantity").notNull(),
+    lineTotalKobo: integer("line_total_kobo").notNull(),
+  },
+  (item) => [
+    index("order_items_order_id_idx").on(item.orderId),
+    check("order_items_quantity_range", sql`${item.quantity} between 1 and 10`),
+  ],
+);
+
+/* ------------------------------------------------------------------ Types */
+
+export const PRODUCT_CATEGORIES = productCategoryEnum.enumValues;
+export const PRODUCT_GENDERS = productGenderEnum.enumValues;
+export const ORDER_STATUSES = orderStatusEnum.enumValues;
+export const DELIVERY_ZONES = deliveryZoneEnum.enumValues;
+
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
+export type Order = typeof orders.$inferSelect;
+export type NewOrder = typeof orders.$inferInsert;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type NewOrderItem = typeof orderItems.$inferInsert;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+export type ProductGender = (typeof PRODUCT_GENDERS)[number];
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export type DeliveryZone = (typeof DELIVERY_ZONES)[number];

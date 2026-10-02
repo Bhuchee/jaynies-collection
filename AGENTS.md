@@ -68,10 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 0 (scaffold) COMPLETE. Docs committed, app scaffolded, stack installed, tokens and Poppins in place, `npm run lint` and `npm run build` both pass.
+- Current phase: 1 (database) COMPLETE. Schema, migration and the 21-product seed are live on Neon, and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: PRD.md, FRD.md, DESIGN.md, AGENTS.md, Next.js 16 App Router scaffold, Tailwind v4 tokens, Poppins, folder structure, `.env.example`, `.gitignore`
-- Next: phase 1 (Drizzle schema, Neon connection, migrations, 21-product seed). Needs `DATABASE_URL` from Neon first.
+- Done: phase 0 (scaffold) and phase 1 (database). `src/db/schema.ts`, `src/db/index.ts`, `drizzle.config.ts`, `drizzle/0000_freezing_sunspot.sql` applied to Neon, `src/db/seed.ts` upserting all 21 products.
+- Row counts on Neon: products 21, orders 0, order_items 0.
+- Next: phase 2 (Auth.js with Google, `/signin`, account menu with sign-out, protected `/orders` stub, first Vercel deploy). Needs `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` and a published Google consent screen.
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -87,10 +88,19 @@ public/brand/, public/products/
 - 2026-10-02: The `hoodie-sets` filter chip is labelled "Hoodies & Sets" in the UI. The slug stays `hoodie-sets`.
 - 2026-10-02: The cart badge shows the total quantity of items, not the number of lines.
 - 2026-10-02: Lists order by `created_at desc, name asc` for a stable grid.
+- 2026-10-02: The Auth.js tables keep the canonical adapter column names (`userId`, `sessionToken`, `emailVerified`) with the FRD plural table names, so `DrizzleAdapter` gets explicit mappings. Our own tables use camelCase keys over snake_case columns.
+- 2026-10-02: `orders.user_id` does not cascade on delete, so order history cannot be removed by deleting a user. `accounts`, `sessions` and `order_items.order_id` do cascade, as FRD section 3 and the Auth.js schema require.
+- 2026-10-02: The seed staggers `products.created_at` from a fixed base date, so "the 8 newest" is deterministic and re-seeding is idempotent.
+- 2026-10-02: `drizzle.config.ts` and `src/db/seed.ts` read `.env.local` with Node's built-in `process.loadEnvFile`, so no `dotenv` dependency was added.
+- 2026-10-02: Product descriptions were written by the builder because FRD section 4 supplies none and the column is NOT NULL. Jaynie should review the wording.
 
 ## Known issues
+- The 21 product descriptions are builder-written copy awaiting Jaynie's review.
+- 10 products have `image_url` null (the FRD "no photo yet" rows), so they show the DESIGN.md placeholder card.
 - WhatsApp number is a placeholder (2348000000000).
 - T-shirt and polo prices are placeholders for Jaynie to confirm.
 - 10 product images are still to be generated (DESIGN.md §9), and the 13 provided photos plus the brand logos and hero cut-outs are not in `public/` yet, so fallbacks are in use.
+- `npm audit` reports 4 moderate advisories from drizzle-kit's bundled esbuild (dev-only, no runtime exposure).
+- Node 22.12 prints an EBADENGINE warning for `eslint-visitor-keys`, which wants 22.13 or newer. Nothing fails.
 - The remote was renamed from `bhuchee` to `Bhuchee`; `origin` on this machine points at the new URL. GitHub handles the redirect either way.
 - The folder had no `.git` directory when phase 0 started, so the repo was initialised here and the docs were pushed as the root commit.
