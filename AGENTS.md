@@ -68,11 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 2 (auth) CODE COMPLETE, first Vercel deploy pending. Auth.js with Google, database sessions, `/signin`, the account menu with sign-out and the protected `/orders` stub are built and verified against Neon. `npm run lint` and `npm run build` both pass.
+- Current phase: 3 (shop UI) COMPLETE. The full storefront is built against the seeded catalogue and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phases 0, 1 and 2. `src/auth.ts` (Google + DrizzleAdapter + explicit table mappings + `session.strategy = "database"`), `src/app/api/auth/[...nextauth]/route.ts`, `src/app/signin/page.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/account-menu.tsx`, `src/components/ui/brand-logo.tsx`, `src/components/icons/google.tsx`, `src/app/orders/page.tsx`.
+- Done: phases 0, 1, 2 and 3. Layout (header with search, footer, mobile bottom nav, delivery band), home, `/shop` with category and gender filters, `/product/[slug]`, `/contact`, the placeholder image component, `lib/queries.ts`, `lib/money.ts`, `lib/catalog.ts`, `lib/site.ts`, `lib/delivery.ts` and the persisted Zustand cart.
 - Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
-- Next: phase 3 (shop UI: layout, home, shop, product page, contact, placeholder images), after Brian's first Vercel deploy and a production Google sign-in test.
+- Next: phase 4 (the `/cart` page, `/checkout`, `lib/validation.ts` and the `placeOrder` Server Action).
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -98,8 +98,18 @@ public/brand/, public/products/
 - 2026-10-02: The `/signin` page only accepts a relative `callbackUrl` (it must start with a single `/`), so the page cannot be abused as an open redirect.
 - 2026-10-02: The header shipped in phase 2 is deliberately minimal (brand mark plus account menu). Phase 3 replaces it with the full DESIGN.md section 6 header and the mobile bottom nav.
 - 2026-10-02: `components/ui/brand-logo.tsx` is a client component so a missing brand file can fall back to a text wordmark through `onError`. An `fs.existsSync` check was rejected because `public/` is served from the CDN and is not guaranteed to exist in the serverless filesystem.
+- 2026-10-02: `src/lib/catalog.ts` (category and gender labels plus the shop URL helpers) and `src/lib/site.ts` (public contact links) are new modules beyond the folder list. They exist so the chip labels in F2, F3 and the placeholder card all read from one place, and so no URL is built twice.
+- 2026-10-02: The Zustand cart store and `lib/delivery.ts` were pulled into phase 3 because F1's cart badge, F4's add-to-cart and F11's fee summary all depend on them. The `/cart` page, `/checkout` and `placeOrder` remain phase 4.
+- 2026-10-02: The account button stays in the mobile header even though DESIGN.md section 6 lists only Search and ShoppingBag there. The bottom nav has no account item, so hiding it would leave sign-out unreachable on a phone, which the graded logout test needs.
+- 2026-10-02: Category chips and the quantity stepper are 44px tall. DESIGN.md section 5 says 40px, but section 1 rule 6 requires tap targets of at least 44px, and the hard rule wins.
+- 2026-10-02: The cart badge count reads the store through `useSyncExternalStore`, so the server and the first client render agree and there is no hydration mismatch.
+- 2026-10-02: The delivery band marquee is a CSS keyframe in `globals.css`, switched off under `prefers-reduced-motion` so the text simply stops.
+- 2026-10-02: The best sellers are the three rows flagged in FRD section 4, and the "Save" pill is computed per product rather than hard-coded to the "Save ₦7,000" example in DESIGN.md section 5.
 
 ## Known issues
+- No real images yet. `public/brand/` and `public/products/` hold only `.gitkeep`, so the logo wordmark, the hero slots and every product image are currently rendering their fallbacks. Dropping the DESIGN.md files in switches them over with no code change.
+- DESIGN.md section 6 puts the footer copyright line in `--ink-muted` on the Onyx background, which is a low contrast pairing. It is built as documented, so Jaynie may want to change the token there.
+- The 360px acceptance in FRD F1 (no horizontal scroll) was not checked in a real browser. Brian should open the site at 360px and confirm, especially the chips, the sticky add-to-cart bar and the bottom nav.
 - The first Vercel deploy has not happened yet, so production Google sign-in is unproven and `NEXT_PUBLIC_SITE_URL` is still the localhost template value. Deploy in phase 2 and set it to the real domain.
 - The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.
 - The 21 product descriptions are builder-written copy awaiting Jaynie's review.

@@ -1,36 +1,91 @@
+import { Package, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { auth, signOut } from "@/auth";
+import { CartBadge } from "@/components/cart/cart-badge";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { AccountMenu } from "./account-menu";
+import { SearchBar } from "./search-bar";
 
 /*
-  Phase 2 header. It carries the brand mark and the account menu only.
-  Phase 3 replaces this with the full DESIGN.md section 6 header: nav links,
-  search, My Orders, cart badge and the mobile bottom nav.
+  DESIGN.md section 6. Desktop: logo, nav links, a 280px search input, then the
+  My Orders, account and cart icons. Mobile: logo on the left, search, account
+  and cart on the right. The account button stays on mobile on purpose, because
+  the bottom nav has no account item and sign-out must stay reachable.
 */
+const NAV_LINKS = [
+  { href: "/shop", label: "Shop" },
+  { href: "/shop?gender=men", label: "Men" },
+  { href: "/shop?gender=women", label: "Women" },
+  { href: "/shop?category=ankara", label: "Ankara" },
+  { href: "/contact", label: "Contact" },
+];
+
 export async function SiteHeader() {
   const session = await auth();
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
+      <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[auto_1fr] items-center gap-4 px-4 md:grid-cols-[auto_1fr_auto]">
         <Link
           href="/"
-          className="flex items-center"
+          className="flex shrink-0 items-center"
           aria-label="Jaynie's Collection home"
         >
           <BrandLogo />
         </Link>
 
-        <AccountMenu
-          name={session?.user?.name ?? null}
-          email={session?.user?.email ?? null}
-          image={session?.user?.image ?? null}
-          signOutAction={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
-        />
+        <nav
+          aria-label="Main"
+          className="hidden items-center justify-center gap-6 md:flex"
+        >
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-[13px] font-medium uppercase tracking-[0.06em] text-onyx transition-opacity hover:opacity-70"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-end gap-2">
+          <Suspense fallback={null}>
+            <SearchBar />
+          </Suspense>
+
+          <Link
+            href="/orders"
+            aria-label="My Orders"
+            className="hidden h-11 w-11 items-center justify-center rounded border border-line text-onyx transition-opacity hover:opacity-85 lg:flex"
+          >
+            <Package className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+          </Link>
+
+          <AccountMenu
+            name={session?.user?.name ?? null}
+            email={session?.user?.email ?? null}
+            image={session?.user?.image ?? null}
+            signOutAction={async () => {
+              "use server";
+              await signOut({ redirectTo: "/" });
+            }}
+          />
+
+          <Link
+            href="/cart"
+            aria-label="Cart"
+            className="relative flex h-11 w-11 items-center justify-center rounded border border-line text-onyx transition-opacity hover:opacity-85"
+          >
+            <ShoppingBag
+              className="h-6 w-6"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+            <CartBadge />
+          </Link>
+        </div>
       </div>
     </header>
   );
