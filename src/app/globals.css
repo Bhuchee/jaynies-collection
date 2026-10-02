@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/*
+  DESIGN.md section 2. Every colour in the app comes from these tokens.
+  Never hard-code a hex value in a component.
+*/
+:root {
+  --onyx: #0a0a0a;
+  --ink-muted: #5c5c5c;
+  --highlight: #ead86b;
+  --gold: #c9a44c;
+  --gold-deep: #8e6e27;
+  --cream: #fbf9ee;
+  --mist: #f1f2f1;
+  --photo: #d3d3d3;
+  --line: #e4e4e4;
+  --white: #ffffff;
+  --success: #2f6b3b;
+  --danger: #b3261e;
+}
+
+/* Map the tokens onto Tailwind so bg-onyx, text-ink-muted and border-line exist. */
+@theme inline {
+  --color-onyx: var(--onyx);
+  --color-ink-muted: var(--ink-muted);
+  --color-highlight: var(--highlight);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-cream: var(--cream);
+  --color-mist: var(--mist);
+  --color-photo: var(--photo);
+  --color-line: var(--line);
+  --color-white: var(--white);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--white);
+    color: var(--onyx);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* DESIGN.md section 1 rule 6. Focus rings are always visible. */
+  :focus-visible {
+    outline: 2px solid var(--onyx);
+    outline-offset: 2px;
+  }
+
+  /* DESIGN.md section 7. Respect prefers-reduced-motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
