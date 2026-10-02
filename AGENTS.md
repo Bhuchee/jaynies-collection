@@ -68,11 +68,11 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 4 (cart and checkout) CODE COMPLETE. `/cart`, `/checkout`, `lib/validation.ts`, `lib/order-number.ts` and the `placeOrder` Server Action are built, and `npm run lint` and `npm run build` both pass with zero warnings.
+- Current phase: 5 (email) CODE COMPLETE, live send pending credentials. `lib/mailgun.ts`, `emails/order-confirmation.ts` and the FRD F8 step 9 seam are built and checked, and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phases 0 to 4. The brand logo and the 11 product photos Brian supplied are now in `public/brand/` and `public/products/`, so the header, footer, hero and product cards show real photography.
+- Done: phases 0 to 5. The confirmation email renders, the Mailgun call is wired to the order, and `email_sent_at` is stamped only when Mailgun accepts the message.
 - Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
-- Next: phase 5 (`lib/mailgun.ts` and the branded confirmation email, wired into the marked seam in `actions/place-order.ts`).
+- Next: phase 6 (`/orders` and `/orders/[orderNumber]`, status badges, success banner). The live email send needs Brian's Mailgun credentials and the verified domain.
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -111,8 +111,14 @@ public/brand/, public/products/
 - 2026-10-02: `placeOrder` normalises instead of rejecting: the country is forced to Nigeria for the Nigerian zones and the state is forced to FCT for Abuja, because FRD F7 says those fields are "set" rather than "entered". A tampered country for a Nigerian zone is still rejected by the schema.
 - 2026-10-02: Step 9 of FRD F8 (calling `sendOrderConfirmation`) is a marked seam in `actions/place-order.ts`. Phase 5 fills it in and stamps `email_sent_at`, which stays null until then.
 - 2026-10-02: Brian's images were dragged into `public/` with mangled names (`publicbrandlogo.png`, `publicproductsshirt-mosaic .webp`, and so on). They were renamed to the exact DESIGN.md section 4 and 9 paths so the components pick them up with no code change.
+- 2026-10-02: `sendEmail` never throws. It returns `{ ok, id }` or `{ ok: false, status, error }`, and the step 9 seam wraps the whole email block in try/catch, so a mail failure cannot fail an order (AGENTS.md rule 8).
+- 2026-10-02: The seam re-reads the committed `orders` and `order_items` rows before building the email, so the email shows exactly what was saved rather than the values the client sent.
+- 2026-10-02: `emails/order-confirmation.ts` repeats the DESIGN.md tokens as literal hex values in a `PALETTE` const, because email clients cannot read CSS custom properties from globals.css.
+- 2026-10-02: `getSiteUrl()` reads `NEXT_PUBLIC_SITE_URL` and throws if it is unset, so email links can never fall back to a hard-coded localhost. The throw is caught by the seam.
 
 ## Known issues
+- `public/brand/logo-email.png` does not exist yet, so the email header logo will 404 until it is added (DESIGN.md section 4 asks for a 300px-wide PNG for email). `public/brand/logo-dark-bg.png` already exists and would look identical on the black header.
+- The Mailgun domain is still verifying, so no live email has been sent. `MAIL_FROM` is still the `YOUR_MAILGUN_DOMAIN` placeholder in `.env.local`.
 - The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
 - `public/brand/logo-dark-bg.png` is really a JPEG that was renamed, because the drag-and-drop gave it a `.jpg` name. It renders, but it should be re-exported as a true PNG.
 - Three stray files `public/products/image (9).png`, `image (14).png` and `image (16).png` are not identified and are not committed. Two of them match the byte size of already-imported photos, so they are probably duplicates.

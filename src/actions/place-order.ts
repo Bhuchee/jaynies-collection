@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { orderItems, orders, products } from "@/db/schema";
+import { sendOrderConfirmation } from "@/emails/order-confirmation";
 import { DELIVERY_FEES_KOBO } from "@/lib/delivery";
 import { createUniqueOrderNumber } from "@/lib/order-number";
 import {
@@ -144,10 +145,77 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   ]);
 
   /*
-    Step 9: phase 5 calls sendOrderConfirmation here, stamps email_sent_at on
-    success and leaves it null on failure. The order is already committed, so
-    an email failure can never fail an order.
+    Step 9: the confirmation email is best effort. The order is already
+    committed, so anything that goes wrong here is logged and swallowed: a
+    failed email can never fail an order, and email_sent_at stays null.
   */
+  try {
+    const [storedOrder] = await db
+      .select({
+        orderNumber: orders.orderNumber,
+        createdAt: orders.createdAt,
+        customerEmail: orders.customerEmail,
+        recipientName: orders.recipientName,
+        phone: orders.phone,
+        addressLine: orders.addressLine,
+        city: orders.city,
+        state: orders.state,
+        country: orders.country,
+        note: orders.note,
+        subtotalKobo: orders.subtotalKobo,
+        deliveryFeeKobo: orders.deliveryFeeKobo,
+        totalKobo: orders.totalKobo,
+        deliveryZone: orders.deliveryZone,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    const storedItems = await db
+      .select({
+        name: orderItems.productName,
+        size: orderItems.size,
+        quantity: orderItems.quantity,
+        lineTotalKobo: orderItems.lineTotalKobo,
+        imageUrl: orderItems.imageUrl,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId));
+
+    const email = await sendOrderConfirmation({
+      orderNumber: storedOrder.orderNumber,
+      recipientName: storedOrder.recipientName,
+      recipientEmail: storedOrder.customerEmail,
+      createdAt: storedOrder.createdAt,
+      items: storedItems,
+      subtotalKobo: storedOrder.subtotalKobo,
+      deliveryFeeKobo: storedOrder.deliveryFeeKobo,
+      totalKobo: storedOrder.totalKobo,
+      deliveryZone: storedOrder.deliveryZone,
+      phone: storedOrder.phone,
+      addressLine: storedOrder.addressLine,
+      city: storedOrder.city,
+      state: storedOrder.state,
+      country: storedOrder.country,
+      note: storedOrder.note,
+    });
+
+    if (email.ok) {
+      await db
+        .update(orders)
+        .set({ emailSentAt: new Date() })
+        .where(eq(orders.id, orderId));
+    } else {
+      console.error(
+        `Confirmation email for ${storedOrder.orderNumber} failed: ${email.error}`,
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Confirmation email error, the order is still saved:",
+      error,
+    );
+  }
 
   /* Step 10: the client clears the cart and redirects to the order page. */
   return { ok: true, orderNumber: insertedOrder[0].orderNumber };
