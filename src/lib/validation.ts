@@ -6,7 +6,22 @@ import { z as schema } from "zod";
   FRD F7 and F8. One Zod schema is shared by the checkout form and the
   placeOrder Server Action, so the client and the server agree on every rule.
   The server re-runs this on its own input; the browser copy is never trusted.
+
+  FRD F7: every delivery text field is OPTIONAL. There are no minimum lengths,
+  no phone format rule, and no rule that ties a field to the delivery zone. The
+  only rule left is the 300-character server-side maximum, applied here so the
+  browser and the action enforce exactly the same limit.
 */
+
+/** FRD F7. The one surviving validation rule on the delivery text fields. */
+export const MAX_FIELD_LENGTH = 300;
+
+/** A trimmed, optional free-text field. Empty is valid; only length is checked. */
+const optionalText = (label: string) =>
+  schema
+    .string()
+    .trim()
+    .max(MAX_FIELD_LENGTH, `${label} must be ${MAX_FIELD_LENGTH} characters or fewer.`);
 
 export const DELIVERY_ZONES = ["abuja", "nigeria", "international"] as const;
 export type DeliveryZoneInput = (typeof DELIVERY_ZONES)[number];
@@ -15,71 +30,20 @@ export type DeliveryZoneInput = (typeof DELIVERY_ZONES)[number];
 export const MIN_LINE_QUANTITY = 1;
 export const MAX_LINE_QUANTITY = 10;
 
-export const checkoutSchema = schema
-  .object({
-    fullName: schema
-      .string()
-      .trim()
-      .min(2, "Enter your full name.")
-      .max(80, "That name is too long."),
-    phone: schema
-      .string()
-      .trim()
-      .regex(
-        /^\+?[0-9]{7,20}$/,
-        "Use digits only, 7 to 20 characters, with an optional + at the start.",
-      ),
-    deliveryZone: schema.enum(DELIVERY_ZONES, {
-      message: "Choose a delivery zone.",
-    }),
-    addressLine: schema
-      .string()
-      .trim()
-      .min(5, "Enter your street address.")
-      .max(200, "That address is too long."),
-    city: schema
-      .string()
-      .trim()
-      .min(1, "Enter your city.")
-      .max(80, "That city name is too long."),
-    state: schema
-      .string()
-      .trim()
-      .min(1, "Enter your state or region.")
-      .max(80, "That name is too long."),
-    country: schema
-      .string()
-      .trim()
-      .min(2, "Enter your country.")
-      .max(80, "That country name is too long."),
-    note: schema
-      .string()
-      .trim()
-      .max(300, "Keep the note under 300 characters.")
-      .optional(),
-  })
-  .superRefine((value, ctx) => {
-    const country = value.country.trim().toLowerCase();
-
-    if (value.deliveryZone === "international") {
-      if (country === "nigeria") {
-        ctx.addIssue({
-          code: "custom",
-          path: ["country"],
-          message: "Choose a Nigerian delivery zone, or change the country.",
-        });
-      }
-      return;
-    }
-
-    if (country !== "nigeria") {
-      ctx.addIssue({
-        code: "custom",
-        path: ["country"],
-        message: "Nigeria is locked for this delivery zone.",
-      });
-    }
-  });
+export const checkoutSchema = schema.object({
+  fullName: optionalText("Full name"),
+  phone: optionalText("Phone"),
+  /* Still required: the zone decides the delivery fee, and Abuja is
+     preselected so a shopper can submit the form without touching it. */
+  deliveryZone: schema.enum(DELIVERY_ZONES, {
+    message: "Choose a delivery zone.",
+  }),
+  addressLine: optionalText("Address"),
+  city: optionalText("City"),
+  state: optionalText("State or region"),
+  country: optionalText("Country"),
+  note: optionalText("Order note").default(""),
+});
 
 export const cartLineSchema = schema.object({
   productId: schema.uuid("That product reference is not valid."),

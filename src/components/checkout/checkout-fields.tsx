@@ -52,7 +52,11 @@ function Field({
   );
 }
 
-/* FRD F7 field rules. The same Zod schema runs again on the server. */
+/*
+  FRD F7. Every delivery field is optional, so nothing here is read-only, nothing
+  is marked required, and the only inline error is an over-length value. The same
+  Zod schema runs again on the server.
+*/
 export function CheckoutFields({
   form,
   zone,
@@ -61,27 +65,8 @@ export function CheckoutFields({
   defaultEmail,
   onSubmit,
 }: CheckoutFieldsProps) {
-  const { register, handleSubmit, setValue, formState } = form;
+  const { register, handleSubmit, formState } = form;
   const { errors } = formState;
-
-  function handleZoneChange(value: DeliveryZoneInput) {
-    if (value === "abuja") {
-      setValue("state", "FCT");
-      setValue("country", "Nigeria");
-      return;
-    }
-
-    setValue("state", "");
-
-    if (value === "nigeria") {
-      setValue("country", "Nigeria");
-      return;
-    }
-
-    if (form.getValues("country").trim().toLowerCase() === "nigeria") {
-      setValue("country", "");
-    }
-  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
@@ -108,7 +93,7 @@ export function CheckoutFields({
         id="phone"
         label="Phone / WhatsApp"
         error={errors.phone?.message}
-        hint="Jaynie confirms payment and delivery on this number."
+        hint="Optional. Add a number if you would like Jaynie to confirm payment and delivery on WhatsApp."
       >
         <input
           id="phone"
@@ -139,9 +124,7 @@ export function CheckoutFields({
                   <input
                     type="radio"
                     value={value}
-                    {...register("deliveryZone", {
-                      onChange: () => handleZoneChange(value),
-                    })}
+                    {...register("deliveryZone")}
                     className="h-5 w-5 accent-onyx"
                   />
                   <span className="flex items-center gap-2 text-sm font-medium text-onyx">
@@ -196,12 +179,8 @@ export function CheckoutFields({
             id="state"
             autoComplete="address-level1"
             {...register("state")}
-            readOnly={zone === "abuja"}
             aria-invalid={errors.state ? "true" : "false"}
-            className={fieldClass(
-              errors.state?.message,
-              zone === "abuja" ? "text-ink-muted" : "",
-            )}
+            className={fieldClass(errors.state?.message)}
           />
         </Field>
       </div>
@@ -211,16 +190,12 @@ export function CheckoutFields({
           id="country"
           autoComplete="country-name"
           {...register("country")}
-          readOnly={zone !== "international"}
           aria-invalid={errors.country ? "true" : "false"}
-          className={fieldClass(
-            errors.country?.message,
-            zone !== "international" ? "text-ink-muted" : "",
-          )}
+          className={fieldClass(errors.country?.message)}
         />
       </Field>
 
-      <Field id="note" label="Order note (optional)" error={errors.note?.message}>
+      <Field id="note" label="Order note" error={errors.note?.message}>
         <textarea
           id="note"
           rows={3}

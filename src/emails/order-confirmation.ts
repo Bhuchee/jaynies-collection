@@ -37,9 +37,16 @@ export type OrderConfirmationItem = {
   imageUrl: string | null;
 };
 
+/*
+  FRD F7: the delivery fields are optional, so every one of them may be null.
+  The Google name is carried separately as a greeting fallback, because the
+  shopper may clear the name field.
+*/
 export type OrderConfirmationData = {
   orderNumber: string;
-  recipientName: string;
+  recipientName: string | null;
+  /** The session's Google name, used only when recipientName is empty. */
+  fallbackName: string | null;
   recipientEmail: string;
   createdAt: Date;
   items: OrderConfirmationItem[];
@@ -47,11 +54,11 @@ export type OrderConfirmationData = {
   deliveryFeeKobo: number | null;
   totalKobo: number;
   deliveryZone: DeliveryZone;
-  phone: string;
-  addressLine: string;
-  city: string;
-  state: string;
-  country: string;
+  phone: string | null;
+  addressLine: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
   note: string | null;
 };
 
@@ -83,9 +90,25 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function firstNameOf(recipientName: string): string {
-  const first = recipientName.trim().split(/\s+/)[0] ?? "";
-  return first || "there";
+/** FRD F7: the typed name first, then the Google name, then a neutral word. */
+function firstNameOf(...candidates: (string | null | undefined)[]): string {
+  for (const candidate of candidates) {
+    const first = (candidate ?? "").trim().split(/\s+/)[0] ?? "";
+    if (first) return first;
+  }
+
+  return "there";
+}
+
+/** Joins the address lines the shopper actually filled in, skipping blanks. */
+function addressLines(data: OrderConfirmationData): string[] {
+  return [
+    data.recipientName,
+    data.addressLine,
+    [data.city, data.state].filter(Boolean).join(", "),
+    data.country,
+    data.phone,
+  ].filter((line): line is string => !!line && line.trim() !== "");
 }
 
 function absoluteAsset(path: string, siteUrl: string): string {
@@ -121,7 +144,8 @@ export function buildOrderConfirmation(
   const siteUrl = getSiteUrl();
   const logoUrl = `${siteUrl}/brand/logo-dark-bg.png`;
   const orderUrl = `${siteUrl}/orders/${data.orderNumber}`;
-  const greeting = escapeHtml(firstNameOf(data.recipientName));
+  const greetingName = firstNameOf(data.recipientName, data.fallbackName);
+  const greeting = escapeHtml(greetingName);
   const orderDate = formatOrderDate(data.createdAt);
   const isInternational = data.deliveryZone === "international";
 
@@ -142,18 +166,19 @@ export function buildOrderConfirmation(
     ? `<tr><td style="padding:24px 32px 0 32px;"><p style="margin:0;font-size:13px;line-height:1.6;color:${PALETTE.inkMuted};"><strong style="color:${PALETTE.onyx};">Your note:</strong> ${escapeHtml(data.note)}</p></td></tr>`
     : "";
 
-  const addressBlock = [
-    data.recipientName,
-    data.addressLine,
-    `${data.city}, ${data.state}`,
-    data.country,
-    data.phone,
-  ]
+  /*
+    FRD F7: the shopper may leave any of these blank, so blank lines are dropped
+    instead of leaving empty lines or a stray comma in the address.
+  */
+  const addressBlock = addressLines(data)
     .map((line) => escapeHtml(line))
     .join("<br />");
 
+  const addressText = addressLines(data);
+  const noAddressGiven = addressText.length === 0;
+
   const textLines = [
-    `Thank you, ${firstNameOf(data.recipientName)}`,
+    `Thank you, ${greetingName}`,
     "",
     `Your Jaynie's Collection order ${data.orderNumber} is confirmed.`,
     `Placed on ${orderDate}.`,
@@ -169,11 +194,9 @@ export function buildOrderConfirmation(
     `Total: ${formatNaira(data.totalKobo)}`,
     "",
     "Delivery address",
-    data.recipientName,
-    data.addressLine,
-    `${data.city}, ${data.state}`,
-    data.country,
-    data.phone,
+    ...(noAddressGiven
+      ? ["Not provided. Jaynie will contact you to arrange delivery."]
+      : addressText),
     ...(data.note ? ["", `Your note: ${data.note}`] : []),
     "",
     "What happens next",
@@ -235,7 +258,7 @@ ORDER ${escapeHtml(data.orderNumber)}
 
 <tr><td style="padding:24px 32px 0 32px;">
 <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${PALETTE.onyx};">Delivery address</p>
-<p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:${PALETTE.onyx};">${addressBlock}</p>
+<p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:${PALETTE.onyx};">${noAddressGiven ? "Not provided. Jaynie will contact you to arrange delivery." : addressBlock}</p>
 </td></tr>
 ${noteBlock}
 <tr><td style="padding:24px 32px 0 32px;">

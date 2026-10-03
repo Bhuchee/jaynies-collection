@@ -101,26 +101,36 @@ Sections, in order:
 
 | Field | Rule |
 |---|---|
-| Full name | Required, 2–80 characters. Prefilled from the Google name. |
-| Phone / WhatsApp | Required, 7–20 characters, digits plus `+` |
-| Delivery zone | Required radio: `abuja` (₦5,000), `nigeria` (₦10,000), `international` (fee to be confirmed) |
-| Address | Required, 5–200 characters |
-| City | Required |
-| State / Region | Required. Set to "FCT" when the zone is abuja. |
-| Country | Required. Locked to "Nigeria" for abuja and nigeria; free text that must not be Nigeria for international. |
-| Order note | Optional, up to 300 characters |
+| Full name | Optional. Prefilled from the Google name, which the shopper may clear. |
+| Phone / WhatsApp | Optional, free text. |
+| Delivery zone | Required radio: `abuja` (₦5,000), `nigeria` (₦10,000), `international` (fee to be confirmed). **Abuja is preselected** so the fee always calculates. |
+| Address | Optional, free text. |
+| City | Optional, free text. |
+| State / Region | Optional, free text. Never overwritten by the zone. |
+| Country | Optional, free text. Never overwritten by the zone. |
+| Order note | Optional. |
 
+Every field above is **optional**. A shopper can place an order with nothing
+  filled in except the delivery zone. There are no minimum lengths, no phone
+  format rule, and no field is locked, forced or rejected based on the zone.
+
+  The **only** validation rule left on the text fields is a maximum length of
+  **300 characters each**, enforced in the shared Zod schema (`lib/validation.ts`)
+  so it applies identically in the browser and in `placeOrder`. An empty value is
+  valid everywhere and is stored as `null`, never as an empty string. Labels carry
+  no asterisk and no "required" marker, and no inline error appears for an empty
+  field; only an over-length value is reported.
 - **Summary panel:** line items, subtotal, delivery (shows "To be confirmed" for international), and total.
 - **Payment note:** "No payment online. Jaynie will contact you on WhatsApp within 24 hours to confirm payment (transfer or pay on delivery) and delivery date."
 - **Place order button:** shows a loading state and can't be double-submitted.
 - If the cart is empty, redirect to `/cart`.
-- **Acceptance:** validation errors appear inline, and the delivery fee updates live when the zone changes.
+- **Acceptance:** an order is placed successfully with every delivery field blank; the delivery fee still updates live when the zone changes; a value over 300 characters is rejected with an inline message.
 
 ### F8 — Place order (Server Action `placeOrder`)
 Located at `src/actions/place-order.ts`.
 
 1. `auth()` returns a session, or the action fails with an "unauthenticated" error.
-2. Validate the input with Zod: cart lines (`productId`, `size`, `quantity`) and delivery fields.
+2. Validate the input with Zod: cart lines (`productId`, `size`, `quantity`) and the delivery fields. Delivery text fields are optional and capped at 300 characters each; the delivery zone must be one of the three valid values. An empty string passes validation.
 3. Load the products from the DB by ID. Reject a line if the product is inactive or missing, the size isn't in `product.sizes`, or the quantity isn't between 1 and 10.
 4. **Recalculate prices on the server** from `products.price_kobo`. Never use client prices.
 5. Delivery fee from `lib/delivery.ts`:
@@ -129,7 +139,7 @@ Located at `src/actions/place-order.ts`.
    - international: `null`
 6. `status` is `awaiting_quote` for international and `placed` otherwise.
 7. Generate an `order_number` in the format `JC-YYMMDD-XXXX` (4 random uppercase alphanumeric characters) and retry if it already exists.
-8. Insert `orders` and `order_items` in one `db.batch([...])`, which runs as a transaction. Generate the order UUID in the app with `crypto.randomUUID()`.
+8. Insert `orders` and `order_items` in one `db.batch([...])`, which runs as a transaction. Generate the order UUID in the app with `crypto.randomUUID()`. Every delivery value is written exactly as the shopper entered it, except that a trimmed-empty string is stored as `null`; the action never rewrites `state` or `country` based on the zone.
 9. After the batch commits, call `sendOrderConfirmation(order)`:
    - On success, set `email_sent_at = now()`.
    - On failure, log the error but **do not** fail the order.
@@ -234,7 +244,7 @@ Money is always stored as **integer kobo** (₦1 = 100 kobo). Format it only for
 | subtotal_kobo | integer not null | |
 | delivery_fee_kobo | integer null | Null for international |
 | total_kobo | integer not null | Subtotal plus fee (or plus 0 for international) |
-| recipient_name, phone, address_line, city, state, country | text not null | |
+| recipient_name, phone, address_line, city, state, country | text null | All optional. Null when the shopper left the field empty. |
 | note | text null | |
 | customer_email | text not null | Snapshot of the session email |
 | email_sent_at | timestamptz null | |

@@ -11,6 +11,9 @@ export const metadata: Metadata = {
 /*
   FRD F6 and F7. Checkout requires a session, so this page calls auth() and
   redirects. No middleware is used.
+
+  The Google name prefills the name field as a convenience. FRD F7 makes every
+  delivery field optional, so the shopper is free to clear it or leave it alone.
 */
 export default async function CheckoutPage() {
   const session = await auth();
@@ -25,7 +28,8 @@ export default async function CheckoutPage() {
         Checkout
       </h1>
       <p className="mt-2 text-ink-muted">
-        Check your details, choose a delivery zone, then place the order.
+        Choose a delivery zone, then place the order. Every other field is
+        optional.
       </p>
 
       <CheckoutForm

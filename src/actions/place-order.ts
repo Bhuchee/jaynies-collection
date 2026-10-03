@@ -32,6 +32,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   const session = await auth();
   const userId = session?.user?.id;
   const customerEmail = session?.user?.email;
+  const googleName = session?.user?.name ?? null;
 
   if (!userId || !customerEmail) {
     return { ok: false, error: "unauthenticated" };
@@ -111,12 +112,15 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   const totalKobo = subtotalKobo + (deliveryFeeKobo ?? 0);
   const isInternational = delivery.deliveryZone === "international";
 
+  /*
+    FRD F7: no delivery field is required, and none is derived from the zone.
+    The shopper's own words are stored exactly as entered, and an empty field
+    becomes null so "not provided" is never confused with real content.
+  */
   const orderNumber = await createUniqueOrderNumber();
   const orderId = crypto.randomUUID();
 
-  /* Nigeria is locked for the Nigerian zones and FCT is forced for Abuja. */
-  const state = delivery.deliveryZone === "abuja" ? "FCT" : delivery.state;
-  const country = isInternational ? delivery.country : "Nigeria";
+  const optional = (value: string) => (value.trim() === "" ? null : value.trim());
 
   /* Step 8: both inserts land in one transaction. */
   const [insertedOrder] = await db.batch([
@@ -131,13 +135,13 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
         subtotalKobo,
         deliveryFeeKobo,
         totalKobo,
-        recipientName: delivery.fullName,
-        phone: delivery.phone,
-        addressLine: delivery.addressLine,
-        city: delivery.city,
-        state,
-        country,
-        note: delivery.note ? delivery.note : null,
+        recipientName: optional(delivery.fullName),
+        phone: optional(delivery.phone),
+        addressLine: optional(delivery.addressLine),
+        city: optional(delivery.city),
+        state: optional(delivery.state),
+        country: optional(delivery.country),
+        note: optional(delivery.note),
         customerEmail,
       })
       .returning({ id: orders.id, orderNumber: orders.orderNumber }),
@@ -185,6 +189,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
     const email = await sendOrderConfirmation({
       orderNumber: storedOrder.orderNumber,
       recipientName: storedOrder.recipientName,
+      fallbackName: googleName,
       recipientEmail: storedOrder.customerEmail,
       createdAt: storedOrder.createdAt,
       items: storedItems,

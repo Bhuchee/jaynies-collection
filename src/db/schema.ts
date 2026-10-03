@@ -138,12 +138,15 @@ export const orders = pgTable(
     subtotalKobo: integer("subtotal_kobo").notNull(),
     deliveryFeeKobo: integer("delivery_fee_kobo"),
     totalKobo: integer("total_kobo").notNull(),
-    recipientName: text("recipient_name").notNull(),
-    phone: text("phone").notNull(),
-    addressLine: text("address_line").notNull(),
-    city: text("city").notNull(),
-    state: text("state").notNull(),
-    country: text("country").notNull(),
+    /* FRD F7: every delivery field is optional, so all six are nullable. An
+       empty value is stored as null rather than an empty string, which keeps
+       "not provided" distinguishable from "typed nothing". */
+    recipientName: text("recipient_name"),
+    phone: text("phone"),
+    addressLine: text("address_line"),
+    city: text("city"),
+    state: text("state"),
+    country: text("country"),
     note: text("note"),
     customerEmail: text("customer_email").notNull(),
     emailSentAt: timestamp("email_sent_at", { withTimezone: true }),

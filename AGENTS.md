@@ -70,8 +70,9 @@ public/brand/, public/products/
 ## Status
 - Current phase: 6 (orders) CODE COMPLETE. `/orders`, `/orders/[orderNumber]`, the six status badges and the success banner are built, and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phases 0 to 6. The email header logo now points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
-- Row counts on Neon: products 21, orders 0, order_items 0, users 0, sessions 0.
+- Done: phases 0 to 6, plus change request A (all checkout delivery fields are now optional). The email header logo points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
+- Row counts on Neon: products 21, orders 2, order_items 2, users 4, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and can be deleted from the Neon SQL editor before submission.
+- Schema: 2 migrations applied. Migration `0001_useful_bishop.sql` makes the six delivery columns on `orders` nullable, per change request A.
 - Next: phase 7 (deploy to Vercel, set every environment variable, and run the full end-to-end test on the production URL).
 
 ## Decisions
@@ -118,6 +119,11 @@ public/brand/, public/products/
 - 2026-10-02: The email header logo uses `logo-dark-bg.png`, because `logo-email.png` does not exist. FRD F9 and DESIGN.md section 4 were updated to say so.
 - 2026-10-02: `lib/dates.ts` holds `formatOrderDate`, shared by the order pages and the email template, so dates are formatted identically in both and never drift between server and client.
 - 2026-10-02: `getOrderForUser` looks up the order number together with the user id in one `and(...)`, so another shopper's order number returns null and the page calls `notFound()`. There is no separate ownership check to forget.
+- 2026-10-02: Change request A. Every checkout delivery field is optional: no minimum lengths, no phone format rule, and no field is derived from the zone. The only rule left on the text fields is a 300-character maximum, enforced by one `optionalText()` helper in `lib/validation.ts` that the form and `placeOrder` share. FRD F7, F8 and section 3 were updated to match.
+- 2026-10-02: The six delivery columns on `orders` are NULLABLE, via migration `0001_useful_bishop.sql`. An empty field is stored as `null` rather than an empty string, so "not provided" stays distinguishable from "typed nothing". `customer_email` stays NOT NULL because it is the session snapshot.
+- 2026-10-02: `placeOrder` no longer forces FCT for Abuja or Nigeria for the Nigerian zones. That normalisation was removed with change request A; the shopper's own words are stored as entered.
+- 2026-10-02: The email greeting is `firstNameOf(recipientName, fallbackName)`, where `fallbackName` is the session's Google name. It falls back to "there" if both are empty. The Google name is never printed anywhere else in the email.
+- 2026-10-02: The order page and the email both build the address from only the non-empty values (`addressLines()` in the email, an inline filter on the page). A fully empty address renders one honest sentence rather than blank lines or the word "null".
 
 ## Known issues
 - The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
@@ -130,6 +136,7 @@ public/brand/, public/products/
 - The first Vercel deploy has not happened yet, so production Google sign-in is unproven and `NEXT_PUBLIC_SITE_URL` is still the localhost template value. Deploy in phase 2 and set it to the real domain.
 - The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.
 - The 21 product descriptions are builder-written copy awaiting Jaynie's review.
+- Change request A is verified by 26 automated checks on the shared Zod schema and the email builder, plus a live render of an order whose six delivery columns are all NULL. What is NOT yet verified in a real browser is the checkout form submitting with every field blank: click **Place order** with an empty form to confirm the redirect to `/orders/JC-...?placed=1`. The redirect target page is proven by the same live render.
 - 10 products have `image_url` null (the FRD "no photo yet" rows), so they show the DESIGN.md placeholder card.
 - WhatsApp number is a placeholder (2348000000000).
 - T-shirt and polo prices are placeholders for Jaynie to confirm.

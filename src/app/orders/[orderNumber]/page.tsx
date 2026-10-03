@@ -40,6 +40,15 @@ export default async function OrderPage({
   const { order, items } = result;
   const justPlaced = query.placed === "1";
 
+  /* FRD F7: only the values actually supplied become address lines. */
+  const addressLines = [
+    order.recipientName,
+    order.addressLine,
+    [order.city, order.state].filter(Boolean).join(", "),
+    order.country,
+    order.phone,
+  ].filter((line): line is string => !!line && line.trim() !== "");
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
       {justPlaced ? (
@@ -132,21 +141,30 @@ export default async function OrderPage({
         </dl>
       </section>
 
+      {/*
+        FRD F7: every delivery field is optional, so the address is built only
+        from the values the shopper actually gave. No blank labels, no "null",
+        and the whole block is replaced by one honest line when it is empty.
+      */}
       <section className="mt-6 rounded-xl border border-line p-4">
         <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-onyx">
           Delivery address
         </h2>
-        <address className="mt-2 text-sm not-italic leading-relaxed text-ink-muted">
-          {order.recipientName}
-          <br />
-          {order.addressLine}
-          <br />
-          {order.city}, {order.state}
-          <br />
-          {order.country}
-          <br />
-          {order.phone}
-        </address>
+        {addressLines.length > 0 ? (
+          <address className="mt-2 text-sm not-italic leading-relaxed text-ink-muted">
+            {addressLines.map((line, index) => (
+              <span key={`${index}-${line}`}>
+                {index > 0 ? <br /> : null}
+                {line}
+              </span>
+            ))}
+          </address>
+        ) : (
+          <p className="mt-2 text-sm text-ink-muted">
+            No delivery details were given. Jaynie will contact you to arrange
+            delivery.
+          </p>
+        )}
 
         {order.note ? (
           <>
