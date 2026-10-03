@@ -47,7 +47,7 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
   - Hero: `clamp(2.5rem, 6vw, 4.5rem)`, line-height 1.05
   - Section titles: `clamp(1.5rem, 3vw, 2rem)`
 - **Body:** 400 at 16px, line-height 1.6. Small text is 14px.
-- **Product name:** 500, 16px. **Price:** 600, 16px. **Compare-at price:** 400, `--ink-muted`, strikethrough.
+- **Product name:** 500, 16px. **Price:** 600, 16px. **Compare-at price:** 400, `--ink-muted` at 55% opacity, strikethrough. It is deliberately the quietest thing in the price row: the live price is what is being sold. The "Save ₦X" pill stays at full contrast.
 - **Buttons:** 600, 15px, sentence case.
 
 ## 4. Brand assets (`public/brand/`)

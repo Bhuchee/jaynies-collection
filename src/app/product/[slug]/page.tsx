@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/cart/add-to-cart";
 import { ProductImage } from "@/components/product/product-image";
 import { CATEGORY_LABELS, CATEGORY_SHORT_LABELS, GENDER_LABELS } from "@/lib/catalog";
-import { formatNaira, savingKobo } from "@/lib/money";
+import { COMPARE_AT_CLASS, formatNaira, savingKobo } from "@/lib/money";
 import { getProductBySlug } from "@/lib/queries";
 
 /*
@@ -45,7 +45,7 @@ export default async function ProductPage({
               {formatNaira(product.priceKobo)}
             </span>
             {product.compareAtKobo ? (
-              <span className="text-base font-normal text-ink-muted line-through">
+              <span className={`text-base font-normal ${COMPARE_AT_CLASS}`}>
                 {formatNaira(product.compareAtKobo)}
               </span>
             ) : null}

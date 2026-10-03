@@ -2,7 +2,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { Product } from "@/db/schema";
 import { CATEGORY_SHORT_LABELS } from "@/lib/catalog";
-import { formatNaira, savingKobo } from "@/lib/money";
+import { COMPARE_AT_CLASS, formatNaira, savingKobo } from "@/lib/money";
 import { ProductImage } from "./product-image";
 
 /*
@@ -37,7 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="mt-0.5 text-base font-semibold text-onyx">
             {formatNaira(product.priceKobo)}
             {product.compareAtKobo ? (
-              <span className="ml-2 font-normal text-ink-muted line-through">
+              <span className={`ml-2 font-normal ${COMPARE_AT_CLASS}`}>
                 {formatNaira(product.compareAtKobo)}
               </span>
             ) : null}
