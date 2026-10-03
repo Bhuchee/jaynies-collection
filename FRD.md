@@ -33,7 +33,7 @@ This document lists every feature, how it behaves, and exactly which routes, cod
   - On the right: My Orders, an account button (avatar when signed in, "Sign in" when not), and a cart icon with a count badge.
 - **Header (mobile):** logo on the left; cart icon with badge on the right.
 - **Mobile bottom nav** (below 768px): Home, Shop, Orders, Cart (with badge). Fixed, 64px high, and page content gets bottom padding so nothing is hidden behind it.
-- **Delivery band:** a full-width yellow strip under the hero that reads "Abuja delivery ₦5,000 · Nationwide ₦10,000 · International shipping quoted on request".
+- **Delivery band:** a full-width yellow strip under the hero that reads "Abuja delivery ₦5,000 · Nationwide ₦10,000 · International shipping quoted on request" on desktop, and the shortened "Abuja ₦5,000 · Nigeria ₦10,000 · International on request" below `sm`, where it wraps to at most two lines and never clips its text.
 - **Footer:** black background, short brand line, links (Shop, Contact, My Orders), and social squares for Instagram and WhatsApp.
 - **Acceptance:** no horizontal scroll at 360px width, and every nav item works.
 

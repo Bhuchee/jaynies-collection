@@ -103,7 +103,8 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
 - **Mobile:** the text comes first, then the models below at full width, and the headline stays at 4 lines.
 
 ### Delivery band
-- Full width, `--highlight` background, 48px high. The text is centred at 14px weight 600 and uses a `Truck` icon. On narrow screens it becomes a horizontal marquee.
+- Full width, `--highlight` background, 48px high. The text is centred at 14px weight 600 and uses a `Truck` icon.
+- **Below `sm`:** a shortened line ("Abuja ₦5,000 · Nigeria ₦10,000 · International on request") centred at 13px, allowed to wrap to two lines. The strip grows past 48px rather than clipping, and hides horizontal overflow. No marquee.
 
 ### Best Selling
 - White section. Centred title "BEST SELLING" with the brush underline and the subline "Get in on the trend with our curated selection of best-selling styles." Below it, a 3-column grid of product cards, which becomes a 2-column scroll row on mobile.

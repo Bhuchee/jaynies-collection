@@ -19,20 +19,6 @@
   --danger: #b3261e;
 }
 
-/* DESIGN.md section 6: on narrow screens the delivery band becomes a marquee. */
-@keyframes jc-marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.jc-marquee {
-  animation: jc-marquee 24s linear infinite;
-}
-
 /* Map the tokens onto Tailwind so bg-onyx, text-ink-muted and border-line exist. */
 @theme inline {
   --color-onyx: var(--onyx);
@@ -75,11 +61,6 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
-    }
-
-    .jc-marquee {
-      animation: none !important;
-      transform: none !important;
     }
   }
 }
