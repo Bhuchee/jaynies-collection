@@ -52,7 +52,7 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
 
 ## 4. Brand assets (`public/brand/`)
 
-- `logo.png`: the gold "JAYNIE" logo on a transparent background. Used in the header at 36px high on mobile and 44px on desktop.
+- `logo.png`: the gold "JAYNIE" logo on a transparent background. Used in the header at 48px high on mobile and 56px on desktop. The file is trimmed to the lettering with a 4px transparent pad, so the rendered box is close to the visible wordmark; if you supply a new export, trim it or size the header expecting transparent padding.
 - `logo-dark-bg.png`: the gold logo on black. Used in the footer and the email header.
 - `logo-email.png`: not used. The confirmation email header uses `logo-dark-bg.png`, which already exists and is the gold logo on black.
 - **Motif:** the needle and thread. Use it as a thin `--gold` curved SVG line as an occasional divider. Use it sparingly, at most once per page.
@@ -90,7 +90,7 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
 ### Header
 - White background, sticky, 1px bottom border in `--line`.
 - Desktop: logo on the left; nav links (uppercase, 13px, weight 500, letter-spacing 0.06em) in the centre; a 280px search input (`--mist` background, `Search` icon); then the `Package` (My Orders), `User`, and `ShoppingBag` icons with a gold count badge.
-- Mobile: logo on the left; `Search` and `ShoppingBag` icons on the right. The search icon opens a full-width input that slides down under the header.
+- Mobile: logo on the left; `Search` and `ShoppingBag` icons on the right. The search icon opens a full-width input that slides down under the header. The bar is 72px high on mobile and 80px on desktop, so the 48px/56px logo and the 44px tap targets both fit with 12px of air above and below. At 360px the row measures 330px signed out, the widest case, so nothing overflows.
 
 ### Hero (from Brian's design)
 - A `--mist` card with a 24px radius, inset from the page edges.

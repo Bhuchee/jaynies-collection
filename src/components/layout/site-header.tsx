@@ -26,7 +26,11 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white">
-      <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[auto_1fr] items-center gap-4 px-4 md:grid-cols-[auto_1fr_auto]">
+      {/*
+        h-[72px] on mobile and h-20 on desktop, so the 48px/56px logo plus the
+        44px icon buttons fit with clear air above and below and nothing clips.
+      */}
+      <div className="mx-auto grid h-[72px] w-full max-w-6xl grid-cols-[auto_1fr] items-center gap-2 px-4 md:h-20 md:gap-4 md:grid-cols-[auto_1fr_auto] md:px-6">
         <Link
           href="/"
           className="flex shrink-0 items-center"
