@@ -9,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -180,6 +181,42 @@ export const orderItems = pgTable(
   ],
 );
 
+/* ---------------------------------------------------------------- Saved cart */
+
+/*
+  FRD F5. One row per product and size for a signed-in shopper. The guest cart in
+  localStorage is merged into this table on sign-in, and from then on this is the
+  source of truth. product_id does not cascade: deleting a product from the
+  catalogue should not silently destroy a shopper's saved cart, and products are
+  deactivated rather than deleted.
+*/
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id),
+    size: text("size").notNull(),
+    quantity: integer("quantity").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (item) => [
+    index("cart_items_user_id_idx").on(item.userId),
+    unique("cart_items_user_product_size_unique").on(
+      item.userId,
+      item.productId,
+      item.size,
+    ),
+    check("cart_items_quantity_range", sql`${item.quantity} between 1 and 10`),
+  ],
+);
+
 /* ------------------------------------------------------------------ Types */
 
 export const PRODUCT_CATEGORIES = productCategoryEnum.enumValues;
@@ -189,6 +226,8 @@ export const DELIVERY_ZONES = deliveryZoneEnum.enumValues;
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
+export type CartItem = typeof cartItems.$inferSelect;
+export type NewCartItem = typeof cartItems.$inferInsert;
 export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type OrderItem = typeof orderItems.$inferSelect;

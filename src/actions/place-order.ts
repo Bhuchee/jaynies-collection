@@ -3,7 +3,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { orderItems, orders, products } from "@/db/schema";
+import { cartItems, orderItems, orders, products } from "@/db/schema";
 import { sendOrderConfirmation } from "@/emails/order-confirmation";
 import { DELIVERY_FEES_KOBO } from "@/lib/delivery";
 import { createUniqueOrderNumber } from "@/lib/order-number";
@@ -146,6 +146,8 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       })
       .returning({ id: orders.id, orderNumber: orders.orderNumber }),
     db.insert(orderItems).values(items.map((item) => ({ ...item, orderId }))),
+    /* FRD F5: the saved cart empties in the same transaction as the order. */
+    db.delete(cartItems).where(eq(cartItems.userId, userId)),
   ]);
 
   /*

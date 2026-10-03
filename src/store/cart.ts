@@ -5,9 +5,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /*
-  FRD F5. The cart lives in localStorage under the key jc-cart, so a guest can
-  build a cart before signing in. unitPriceKobo is for display only: the server
-  recalculates every price in placeOrder and never trusts this value.
+  FRD F5. Signed out, the cart lives in localStorage under the key jc-cart, so a
+  guest can build a cart before signing in. Signed in, the same cart is mirrored
+  to cart_items in Neon, and after the sign-in merge the server is authoritative.
+
+  unitPriceKobo is for display only: the server recalculates every price in
+  placeOrder and never trusts this value.
 */
 export type CartLine = {
   productId: string;
@@ -19,6 +22,13 @@ export type CartLine = {
   quantity: number;
 };
 
+/**
+ * null means "we have not found out yet". Checkout waits for this to resolve
+ * before it decides the cart is empty, so a signed-in shopper is never bounced
+ * to /cart while their saved cart is still loading or merging.
+ */
+export type CartSyncState = "unknown" | "guest" | "syncing" | "ready";
+
 export const MAX_QUANTITY = 10;
 
 function clampQuantity(quantity: number): number {
@@ -28,16 +38,46 @@ function clampQuantity(quantity: number): number {
 
 type CartState = {
   lines: CartLine[];
+  /** null until the sync provider has resolved who the shopper is. */
+  userId: string | null;
+  syncState: CartSyncState;
+  /** Number of server writes in flight, so a focus reload cannot clobber one. */
+  pending: number;
+  setIdentity: (userId: string | null) => void;
+  setSyncState: (syncState: CartSyncState) => void;
+  /** Replaces the whole cart, used when the server answers. */
+  setLines: (lines: CartLine[]) => void;
   addItem: (line: CartLine) => void;
   setQuantity: (productId: string, size: string, quantity: number) => void;
   removeItem: (productId: string, size: string) => void;
+  /** Clears only the local cart. The saved cart is left alone on sign-out. */
   clear: () => void;
+  beginWrite: () => void;
+  endWrite: () => void;
 };
 
 export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       lines: [],
+      userId: null,
+      syncState: "unknown",
+      pending: 0,
+
+      setIdentity: (userId) =>
+        set((state) => ({
+          userId,
+          syncState:
+            state.syncState === "unknown"
+              ? userId
+                ? "syncing"
+                : "guest"
+              : state.syncState,
+        })),
+
+      setSyncState: (syncState) => set({ syncState }),
+
+      setLines: (lines) => set({ lines }),
 
       addItem: (line) =>
         set((state) => {
@@ -77,10 +117,40 @@ export const useCartStore = create<CartState>()(
         })),
 
       clear: () => set({ lines: [] }),
+
+      beginWrite: () => set((state) => ({ pending: state.pending + 1 })),
+      endWrite: () =>
+        set((state) => ({ pending: Math.max(0, state.pending - 1) })),
     }),
-    { name: "jc-cart" },
+    {
+      name: "jc-cart",
+      /* Only the lines are persisted: the identity and sync fields must never
+         come back from localStorage, or a stale signed-in flag would leak. */
+      partialize: (state) => ({ lines: state.lines }),
+    },
   ),
 );
+
+/** True when the cart is safe to read: hydrated, and sync has settled. */
+export function useCartReady(): boolean {
+  const hydrated = useCartHydrated();
+  const syncState = useCartStore((state) => state.syncState);
+  return hydrated && syncState !== "unknown" && syncState !== "syncing";
+}
+
+/** True while a server write is in flight, used to avoid clobbering changes. */
+export function useCartHasPendingWrite(): boolean {
+  return useCartStore((state) => state.pending > 0);
+}
+
+/**
+ * FRD F5. Signing out wipes the local cart so the next person on the device
+ * starts with an empty one. It only touches localStorage: the saved cart in
+ * Neon is left alone, so signing back in restores it.
+ */
+export function clearLocalCart(): void {
+  useCartStore.getState().clear();
+}
 
 /*
   The badge shows the total quantity of items, not the number of lines.

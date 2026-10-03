@@ -74,23 +74,31 @@ Sections, in order:
 - **Acceptance:** you can't add without a size, and the cart badge updates immediately.
 
 ### F5 — Cart (`/cart`)
-- Stored in Zustand `persist`, localStorage key `jc-cart`.
+- **Guests (signed out):** the cart lives in Zustand `persist`, localStorage key `jc-cart`. Nobody has to sign in to add to cart.
+- **Signed in:** the same cart is saved in the `cart_items` table, and the server becomes the source of truth.
 - **Line item fields:** `productId`, `slug`, `name`, `imageUrl`, `size`, `unitPriceKobo` (display only), `quantity`.
 - **Features:**
   - Change quantity (1–10) and remove a line.
   - Subtotal.
   - "Delivery calculated at checkout".
   - "Proceed to checkout" button.
-- Empty state with a link to the shop.
-- The cart survives refreshes and sign-in. It is cleared only after an order is placed successfully.
-- **Acceptance:** add, refresh, and the cart is still there. Prices shown here are never trusted by the server (see F8).
+  - Empty state with a link to the shop.
+- **Checkout gate:** a signed-out shopper who presses "Proceed to checkout" is sent to `/signin?callbackUrl=/checkout` (see F6/F7). Signing in is never required to browse or to add to cart.
+- **Sync on sign-in:** immediately after sign-in the guest localStorage cart is merged into the saved cart. The rule is per product and size: **the higher quantity wins, capped at 10**. A line that exists only on one side is kept. After the merge the server cart is authoritative and the local copy is replaced by it.
+- **Checkout must wait for the merge** to finish before it renders or decides the cart is empty, so a returning shopper is never redirected to `/cart` by mistake.
+- **While signed in,** every add, quantity change and remove is written to the server as well as to localStorage.
+- **Reload from the server** on page load and when the tab regains focus, so a change made on one device appears on another without a manual refresh.
+- **After a successful order** the saved cart is cleared in the same transaction that writes the order (F8 step 8), and the local copy is cleared by the client.
+- **On sign-out** the local cart is cleared, so the next person on a shared device never sees it. The saved server cart is not touched, so the shopper gets it back when they sign in again.
+- Prices shown in the cart are never trusted by the server (see F8).
+- **Acceptance:** a guest can fill a cart and sign in without losing anything; the same cart appears on a second device; and after ordering, the cart is empty everywhere.
 
 ### F6 — Authentication
 - **Sign-in page:** `/signin` with the logo, one "Continue with Google" button, and a `callbackUrl` so the user returns to the page they came from.
 - **Setup:**
   - Auth.js v5 in `src/auth.ts`, using `GoogleProvider`, `DrizzleAdapter(db)`, and `session.strategy = "database"`.
   - Route handler at `src/app/api/auth/[...nextauth]/route.ts`.
-- **Sign-out:** in the account menu. It deletes the session row, then redirects to `/`.
+- **Sign-out:** in the account menu. It deletes the session row, then redirects to `/`. It also clears the local cart so the next person on the device does not see it (F5).
 - **Protected pages:** `/checkout`, `/orders`, and `/orders/[orderNumber]`. Each one calls `auth()` and redirects to `/signin?callbackUrl=…` if there is no session. Do not use middleware.
 - **Tables:** `users`, `accounts`, `sessions`, `verification_tokens` (standard Auth.js schema).
 - **Environment variables:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`. `AUTH_TRUST_HOST=true` if needed.
@@ -139,7 +147,7 @@ Located at `src/actions/place-order.ts`.
    - international: `null`
 6. `status` is `awaiting_quote` for international and `placed` otherwise.
 7. Generate an `order_number` in the format `JC-YYMMDD-XXXX` (4 random uppercase alphanumeric characters) and retry if it already exists.
-8. Insert `orders` and `order_items` in one `db.batch([...])`, which runs as a transaction. Generate the order UUID in the app with `crypto.randomUUID()`. Every delivery value is written exactly as the shopper entered it, except that a trimmed-empty string is stored as `null`; the action never rewrites `state` or `country` based on the zone.
+8. Insert `orders` and `order_items` in one `db.batch([...])`, which runs as a transaction. Generate the order UUID in the app with `crypto.randomUUID()`. Every delivery value is written exactly as the shopper entered it, except that a trimmed-empty string is stored as `null`; the action never rewrites `state` or `country` based on the zone. The same batch also deletes the shopper's `cart_items` rows, so the saved cart is emptied in the same transaction that saves the order.
 9. After the batch commits, call `sendOrderConfirmation(order)`:
    - On success, set `email_sent_at = now()`.
    - On failure, log the error but **do not** fail the order.
@@ -263,6 +271,23 @@ Money is always stored as **integer kobo** (₦1 = 100 kobo). Format it only for
 | unit_price_kobo | integer not null | Snapshot |
 | quantity | integer not null check 1–10 | |
 | line_total_kobo | integer not null | |
+
+---
+
+### `cart_items`
+
+A saved cart per signed-in shopper. One row per product and size.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid pk | |
+| user_id | text fk → users.id on delete cascade | Indexed |
+| product_id | uuid fk → products.id | |
+| size | text not null | Must be one of the product's `sizes` |
+| quantity | integer not null check 1–10 | |
+| updated_at | timestamptz default now() | |
+
+Unique on `(user_id, product_id, size)`.
 
 ---
 

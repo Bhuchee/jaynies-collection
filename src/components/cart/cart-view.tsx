@@ -2,11 +2,12 @@
 
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { pushCartChange } from "@/components/cart/cart-sync";
 import { ProductImage } from "@/components/product/product-image";
 import { formatNaira } from "@/lib/money";
 import {
   MAX_QUANTITY,
-  useCartHydrated,
+  useCartReady,
   useCartStore,
   type CartLine,
 } from "@/store/cart";
@@ -18,6 +19,25 @@ import {
 function LineRow({ line }: { line: CartLine }) {
   const setQuantity = useCartStore((state) => state.setQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
+
+  function changeQuantity(quantity: number) {
+    setQuantity(line.productId, line.size, quantity);
+    void pushCartChange({
+      kind: "setQuantity",
+      productId: line.productId,
+      size: line.size,
+      quantity,
+    });
+  }
+
+  function handleRemove() {
+    removeItem(line.productId, line.size);
+    void pushCartChange({
+      kind: "remove",
+      productId: line.productId,
+      size: line.size,
+    });
+  }
 
   return (
     <li className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
@@ -46,7 +66,7 @@ function LineRow({ line }: { line: CartLine }) {
         <div className="flex h-11 items-center rounded border border-line">
           <button
             type="button"
-            onClick={() => setQuantity(line.productId, line.size, line.quantity - 1)}
+            onClick={() => changeQuantity(line.quantity - 1)}
             disabled={line.quantity <= 1}
             aria-label={`Decrease the quantity of ${line.name}`}
             className="flex h-11 w-11 items-center justify-center text-onyx disabled:opacity-40"
@@ -61,7 +81,7 @@ function LineRow({ line }: { line: CartLine }) {
           </span>
           <button
             type="button"
-            onClick={() => setQuantity(line.productId, line.size, line.quantity + 1)}
+            onClick={() => changeQuantity(line.quantity + 1)}
             disabled={line.quantity >= MAX_QUANTITY}
             aria-label={`Increase the quantity of ${line.name}`}
             className="flex h-11 w-11 items-center justify-center text-onyx disabled:opacity-40"
@@ -76,7 +96,7 @@ function LineRow({ line }: { line: CartLine }) {
 
         <button
           type="button"
-          onClick={() => removeItem(line.productId, line.size)}
+          onClick={handleRemove}
           aria-label={`Remove ${line.name} from your cart`}
           className="flex h-11 w-11 items-center justify-center rounded border border-line text-ink-muted transition-colors hover:border-onyx hover:text-onyx"
         >
@@ -88,10 +108,12 @@ function LineRow({ line }: { line: CartLine }) {
 }
 
 export function CartView() {
-  const hydrated = useCartHydrated();
+  const ready = useCartReady();
   const lines = useCartStore((state) => state.lines);
 
-  if (!hydrated) {
+  /* FRD F5: wait for the saved cart to arrive, so a signed-in shopper never
+     sees an empty cart that is really a cart still loading. */
+  if (!ready) {
     return <p className="mt-6 text-ink-muted">Loading your cart.</p>;
   }
 

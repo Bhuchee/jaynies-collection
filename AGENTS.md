@@ -70,9 +70,9 @@ public/brand/, public/products/
 ## Status
 - Current phase: 6 (orders) CODE COMPLETE. `/orders`, `/orders/[orderNumber]`, the six status badges and the success banner are built, and `npm run lint` and `npm run build` both pass.
 - Production URL: _not deployed yet_
-- Done: phases 0 to 6, plus change request A (all checkout delivery fields are now optional). The email header logo points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
-- Row counts on Neon: products 21, orders 2, order_items 2, users 4, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and can be deleted from the Neon SQL editor before submission.
-- Schema: 2 migrations applied. Migration `0001_useful_bishop.sql` makes the six delivery columns on `orders` nullable, per change request A.
+- Done: phases 0 to 6, plus change request A (all checkout delivery fields are optional) and change request B (the cart syncs to the account across devices). The email header logo points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
+- Row counts on Neon: products 21, orders 2, order_items 2, users 4, cart_items 0, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and can be deleted from the Neon SQL editor before submission.
+- Schema: 3 migrations applied. `0001_useful_bishop.sql` makes the six delivery columns on `orders` nullable (change request A). `0002_closed_the_fury.sql` creates `cart_items` (change request B).
 - Next: phase 7 (deploy to Vercel, set every environment variable, and run the full end-to-end test on the production URL).
 
 ## Decisions
@@ -124,6 +124,14 @@ public/brand/, public/products/
 - 2026-10-02: `placeOrder` no longer forces FCT for Abuja or Nigeria for the Nigerian zones. That normalisation was removed with change request A; the shopper's own words are stored as entered.
 - 2026-10-02: The email greeting is `firstNameOf(recipientName, fallbackName)`, where `fallbackName` is the session's Google name. It falls back to "there" if both are empty. The Google name is never printed anywhere else in the email.
 - 2026-10-02: The order page and the email both build the address from only the non-empty values (`addressLines()` in the email, an inline filter on the page). A fully empty address renders one honest sentence rather than blank lines or the word "null".
+- 2026-10-02: Change request B. `cart_items` holds a saved cart per user, unique on (user_id, product_id, size), with a 1-10 check. `user_id` cascades on delete; `product_id` does not, because products are deactivated rather than deleted and a catalogue change should not silently wipe someone's saved cart.
+- 2026-10-02: `src/actions/cart.ts` holds the five cart actions (`fetchSavedCart`, `mergeGuestCart`, `addSavedCartLine`, `setSavedCartQuantity`, `removeSavedCartLine`). Each scopes by `session.user.id`, validates the product and size against `products`, and returns the authoritative cart so the client can adopt the server's answer in one step.
+- 2026-10-02: `components/cart/cart-sync.tsx` is the client brain: it runs the sign-in merge, mirrors every change to the server, and reloads on focus and on page load. `pushCartChange` is the one function the UI calls. It returns false for guests, so guest behaviour is unchanged.
+- 2026-10-02: The sign-in merge rule is MAX, not SUM: same product and size takes the higher quantity, capped at 10. Lines on only one side are kept, and guest lines naming an unknown, inactive or wrong-sized product are dropped.
+- 2026-10-02: `syncState` in the Zustand store (`unknown` -> `guest`/`syncing` -> `ready`) is what `/checkout` and `/cart` wait on via `useCartReady()`. That is what stops a returning shopper being redirected to `/cart` before their saved cart has loaded.
+- 2026-10-02: Zustand `persist` uses `partialize` to store only `lines`. Persisting `userId` or `syncState` would let a stale signed-in flag leak back out of localStorage on the next visit.
+- 2026-10-02: The root layout now calls `auth()` and passes `userId` to `<CartSync>`. This makes every page dynamic, which is the cost of knowing the shopper in the layout.
+- 2026-10-02: A focus reload is skipped while `pending > 0`, so reloading from the server can never overwrite a change that has not been written yet.
 
 ## Known issues
 - The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
@@ -137,6 +145,8 @@ public/brand/, public/products/
 - The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.
 - The 21 product descriptions are builder-written copy awaiting Jaynie's review.
 - Change request A is verified by 26 automated checks on the shared Zod schema and the email builder, plus a live render of an order whose six delivery columns are all NULL. What is NOT yet verified in a real browser is the checkout form submitting with every field blank: click **Place order** with an empty form to confirm the redirect to `/orders/JC-...?placed=1`. The redirect target page is proven by the same live render.
+- Change request B is verified by 15 checks on the merge rule (max, not sum, capped at 10, one-sided lines kept, invalid lines dropped) run against the real catalogue, and 11 checks on the `cart_items` table itself in Neon (unique constraint, quantity check, upsert capping, per-user scoping, cascade on user delete). The two behaviours NOT verified in a real browser are the sign-in merge moment and cross-device reload: to test, build a cart as a guest, sign in, then confirm the cart is still there and that opening the site in a second browser profile with the same Google account shows the same cart.
+- The root layout calling `auth()` makes every route dynamic, so there are no longer any statically generated pages. That is expected and not a problem for a small shop.
 - 10 products have `image_url` null (the FRD "no photo yet" rows), so they show the DESIGN.md placeholder card.
 - WhatsApp number is a placeholder (2348000000000).
 - T-shirt and polo prices are placeholders for Jaynie to confirm.

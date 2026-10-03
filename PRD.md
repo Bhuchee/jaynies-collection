@@ -45,7 +45,7 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 - Shop page with category and gender (Men/Women) filters
 - Product search by name and description, from the header
 - Product page with an image, S/M/L size selector, quantity stepper, and add to cart
-- Cart, stored in the browser so guests can build a cart before signing in
+- Cart, stored in the browser so guests can build a cart before signing in, and synced to a per-user cart in Neon Postgres once signed in, so the same cart shows on every device
 - Google sign-in only, through Auth.js and a Google Cloud OAuth client
 - Checkout, which requires sign-in: delivery details, delivery zone and fee, order summary, and place order
 - Orders saved in Neon Postgres
@@ -81,7 +81,7 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 | Database | Neon Postgres |
 | ORM | Drizzle ORM with `@neondatabase/serverless` and drizzle-kit for migrations |
 | Auth | Auth.js (`next-auth` v5) with the Google provider, the Drizzle adapter, and database sessions |
-| Cart state | Zustand with `persist`, saved in localStorage |
+| Cart state | Zustand with `persist`, saved in localStorage, plus a `cart_items` table in Neon as the source of truth once signed in |
 | Validation | Zod |
 | Email | Mailgun HTTP API, called with `fetch` (no SDK) |
 | Hosting | Vercel |
@@ -146,3 +146,4 @@ Today, customers order through Instagram (@jayniescollection) and WhatsApp. This
 
 - v1 (2 Oct 2026): Initial agreed scope. Bespoke removed. No payment step. Brand and UI follow Brian's hero design.
 - v1.1 (2 Oct 2026): The build runs as 8 phases (0 to 7). PRD phase 8 (buffer, README, submission form) is folded into phase 7. Product search is IN scope (F13), so "Search" was removed from the out-of-scope list. Removed the leftover SHOP_NOTIFY_EMAIL references; the owner order-copy email was cut.
+- v1.2 (2 Oct 2026): The cart syncs to the account. A `cart_items` table holds a saved cart per user, the guest localStorage cart is merged into it immediately after sign-in, and a signed-in shopper sees the same cart on any device. Nothing about signing in changed: a guest still builds a cart in the browser and is only asked to sign in at checkout. See FRD F5.

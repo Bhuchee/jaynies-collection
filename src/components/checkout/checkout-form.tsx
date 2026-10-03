@@ -11,7 +11,7 @@ import {
   zodResolver,
   type CheckoutInput,
 } from "@/lib/validation";
-import { useCartHydrated, useCartStore } from "@/store/cart";
+import { useCartHydrated, useCartReady, useCartStore } from "@/store/cart";
 import { CheckoutFields } from "./checkout-fields";
 import { OrderSummary } from "./order-summary";
 
@@ -27,6 +27,7 @@ type CheckoutFormProps = {
 export function CheckoutForm({ defaultFullName, defaultEmail }: CheckoutFormProps) {
   const router = useRouter();
   const hydrated = useCartHydrated();
+  const cartReady = useCartReady();
   const lines = useCartStore((state) => state.lines);
   const clearCart = useCartStore((state) => state.clear);
 
@@ -53,12 +54,16 @@ export function CheckoutForm({ defaultFullName, defaultEmail }: CheckoutFormProp
   const deliveryFeeKobo = DELIVERY_FEES_KOBO[zone] ?? null;
   const busy = submitting || form.formState.isSubmitting;
 
-  /* FRD F7: an empty cart goes back to /cart. */
+  /*
+    FRD F5 and F7: an empty cart goes back to /cart, but only once the saved cart
+    has finished syncing. Otherwise a returning shopper would be redirected
+    before their cart had even loaded.
+  */
   useEffect(() => {
-    if (hydrated && lines.length === 0) {
+    if (hydrated && cartReady && lines.length === 0) {
       router.replace("/cart");
     }
-  }, [hydrated, lines.length, router]);
+  }, [hydrated, cartReady, lines.length, router]);
 
   async function submitOrder(delivery: CheckoutInput) {
     setSubmitting(true);
@@ -103,7 +108,7 @@ export function CheckoutForm({ defaultFullName, defaultEmail }: CheckoutFormProp
     }
   }
 
-  if (!hydrated) {
+  if (!hydrated || !cartReady) {
     return <p className="mt-6 text-ink-muted">Loading your checkout.</p>;
   }
 

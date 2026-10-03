@@ -3,6 +3,7 @@
 import { LogOut, Package, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { clearLocalCart } from "@/store/cart";
 
 type AccountMenuProps = {
   name: string | null;
@@ -117,7 +118,14 @@ export function AccountMenu({
             My Orders
           </Link>
 
-          <form action={signOutAction}>
+          <form
+            action={signOutAction}
+            /* FRD F5: clear the local cart on sign-out, so the next person on a
+               shared device never sees it. The saved cart in Neon is untouched. */
+            onSubmit={() => {
+              clearLocalCart();
+            }}
+          >
             <button
               type="submit"
               role="menuitem"

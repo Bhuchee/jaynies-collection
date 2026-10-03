@@ -3,6 +3,7 @@
 import { Check, Minus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { pushCartChange } from "@/components/cart/cart-sync";
 import { formatNaira } from "@/lib/money";
 import { MAX_QUANTITY, useCartStore } from "@/store/cart";
 
@@ -36,6 +37,8 @@ export function AddToCart({ product }: AddToCartProps) {
 
   const total = product.priceKobo * quantity;
 
+  /* FRD F5: the local store updates instantly, and the mirror to the server
+     happens in the background when signed in. */
   function handleAdd() {
     if (!size) return;
 
@@ -46,6 +49,12 @@ export function AddToCart({ product }: AddToCartProps) {
       imageUrl: product.imageUrl,
       size,
       unitPriceKobo: product.priceKobo,
+      quantity,
+    });
+    void pushCartChange({
+      kind: "add",
+      productId: product.id,
+      size,
       quantity,
     });
     setToast(true);
