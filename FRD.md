@@ -90,9 +90,10 @@ Sections, in order:
 - **Checkout must wait for that first load or merge** to finish before it renders or decides the cart is empty, so a returning shopper is never redirected to `/cart` by mistake.
 - **While signed in,** every add, quantity change and remove is written to the server as well as to localStorage.
 - **After a successful order** the saved cart is cleared in the same transaction that writes the order (F8 step 8), and the device that placed it clears its local cart too, **keeping** the `syncedUserId` marker so it cannot re-merge.
-- **On sign-out** the local cart is cleared **and the marker is forgotten**, so the next person on a shared device never sees it and a later sign-in is treated as a fresh merge. The saved server cart is not touched, so the shopper gets it back when they sign in again.
+- **On sign-out** the local cart is cleared **and the marker is forgotten**, so the next person on a shared device never sees it and a later sign-in is treated as a fresh merge. The saved server cart is not touched, so the shopper gets it back when they sign in again. This only happens when `syncedUserId` is set; see the guest rule below.
+- **Guest carts are never cleared automatically.** A signed-out visitor's local cart must survive any number of page reloads. The signed-out branch therefore clears the cart **only when `syncedUserId` is set**, which means this device had previously merged a guest cart for some account. A true guest has a null marker and their cart is left alone.
 - Prices shown in the cart are never trusted by the server (see F8).
-- **Acceptance:** a guest can fill a cart and sign in without losing anything; the same cart appears on a second device; after ordering, the cart is empty everywhere and stays empty after a refresh on any device.
+- **Acceptance:** a guest's cart survives repeated reloads, and a guest can fill a cart and sign in without losing anything; the same cart appears on a second device; after ordering, the cart is empty everywhere and stays empty after a refresh on any device.
 
 ### F6 — Authentication
 - **Sign-in page:** `/signin` with the logo, one "Continue with Google" button, and a `callbackUrl` so the user returns to the page they came from.

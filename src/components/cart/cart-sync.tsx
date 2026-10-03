@@ -9,7 +9,7 @@ import {
   setSavedCartQuantity,
   type CartActionResult,
 } from "@/actions/cart";
-import { useCartStore } from "@/store/cart";
+import { resetCartAfterSignOut, useCartStore } from "@/store/cart";
 
 type CartSyncProps = {
   /** The session's user id, or null when signed out. Rendered on the server. */
@@ -150,14 +150,25 @@ export function CartSync({ userId }: CartSyncProps) {
     };
   }, [userId]);
 
-  /* Sign-out: clear the local cart AND forget the merge marker, so the next person
-     on the device sees none and a later sign-in is a fresh merge. The saved cart
-     stays in Neon, so the shopper gets it back when they sign in again. */
+  /*
+    FRD F5. Sign-out clears the local cart AND forgets the merge marker, so the
+    next person on a shared device sees none and a later sign-in is a fresh merge.
+    The saved cart stays in Neon, so the shopper gets it back when they sign in.
+
+    The guard is `syncedUserId` being non-null, meaning THIS DEVICE has merged a
+    guest cart for some account before. A true guest has a null marker, and their
+    cart must survive every reload. Guarding on `syncState` instead was wrong,
+    because a signed-out visitor is already in the "guest" state by the time this
+    runs, so every guest page load wiped their cart.
+
+    The explicit sign-out click also calls clearLocalCart() in the account menu,
+    which covers the case where the page does not reload at all.
+  */
   useEffect(() => {
     if (userId) return;
-    if (useCartStore.getState().syncState === "unknown") return;
 
-    useCartStore.getState().clearAndResetSync();
+    /* A genuine guest is left alone; only a previously synced device clears. */
+    resetCartAfterSignOut();
   }, [userId]);
 
   return null;

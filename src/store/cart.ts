@@ -183,6 +183,25 @@ export function useCartHasPendingWrite(): boolean {
 }
 
 /**
+ * FRD F5. The signed-out branch of the sync provider.
+ *
+ * Clears the local cart and forgets the merge marker ONLY when this device has
+ * previously merged a guest cart for some account, which is what `syncedUserId`
+ * records. A true guest has a null marker, so their cart is left completely
+ * alone and survives any number of reloads.
+ *
+ * Returns true when the cart was actually cleared.
+ */
+export function resetCartAfterSignOut(): boolean {
+  const state = useCartStore.getState();
+
+  if (!state.syncedUserId) return false;
+
+  state.clearAndResetSync();
+  return true;
+}
+
+/**
  * FRD F5. Signing out wipes the local cart so the next person on the device
  * starts with an empty one. It also forgets the merge marker, so a later sign-in
  * on this device is treated as a fresh merge rather than being skipped.
