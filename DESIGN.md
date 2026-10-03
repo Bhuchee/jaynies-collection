@@ -98,7 +98,7 @@ Use black text on `--highlight`. Never put white text on highlight or gold.
   - Stacked headline "LET'S / ELEVATE / YOUR / FIT." with "LET'S" on a white block and "YOUR" on a `--highlight` block.
   - Subline: "Drip that speaks louder than trends."
   - Primary button "Shop Now", linking to `/shop`.
-- **Right side:** two cut-out model images, `hero-man-ember.png` and `hero-woman-lilac.png`. The woman sits on the white plinth, as in the design.
+- **Right side:** two cut-out model images, `hero-man-ember.png` and `hero-woman-lilac.png`, side by side, bottom-aligned, overlapping by 1.5rem to 2.5rem. Both are sized by height so they render at the same height despite having different aspect ratios. The woman sits on the white plinth, as in the design. Cut-out files are trimmed to their alpha bounding box so the overlap and the shared baseline land on the figures rather than on transparent canvas.
 - **Decoration:** 4–5 faint 4-point star or sparkle SVG shapes in `--line`.
 - **Mobile:** the text comes first, then the models below at full width, and the headline stays at 4 lines.
 
