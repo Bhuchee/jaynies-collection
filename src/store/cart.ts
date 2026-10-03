@@ -38,6 +38,16 @@ function clampQuantity(quantity: number): number {
 
 type CartState = {
   lines: CartLine[];
+  /**
+   * FRD F5. The user id whose guest cart has ALREADY been merged into the saved
+   * cart on this device, or null when no merge has happened yet.
+   *
+   * This is persisted on purpose. The merge must happen once and only once, and
+   * an in-memory ref would be lost on every refresh, which would let a stale
+   * local cart be merged back into the server after the server cart had been
+   * emptied by an order placed on another device.
+   */
+  syncedUserId: string | null;
   /** null until the sync provider has resolved who the shopper is. */
   userId: string | null;
   syncState: CartSyncState;
@@ -45,13 +55,25 @@ type CartState = {
   pending: number;
   setIdentity: (userId: string | null) => void;
   setSyncState: (syncState: CartSyncState) => void;
+  /** Records that the one-time guest merge for this user is done. */
+  markSynced: (userId: string) => void;
   /** Replaces the whole cart, used when the server answers. */
   setLines: (lines: CartLine[]) => void;
   addItem: (line: CartLine) => void;
   setQuantity: (productId: string, size: string, quantity: number) => void;
   removeItem: (productId: string, size: string) => void;
-  /** Clears only the local cart. The saved cart is left alone on sign-out. */
+  /**
+   * Clears only the local cart, and keeps the synced marker. Used after a
+   * successful order, so the device that ordered does not re-merge afterwards.
+   * The saved cart is left alone; placeOrder already emptied it server-side.
+   */
   clear: () => void;
+  /**
+   * Clears the local cart AND forgets the merge marker. Used on sign-out, so the
+   * next person on a shared device starts empty and any later sign-in is treated
+   * as a fresh merge.
+   */
+  clearAndResetSync: () => void;
   beginWrite: () => void;
   endWrite: () => void;
 };
@@ -60,6 +82,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       lines: [],
+      syncedUserId: null,
       userId: null,
       syncState: "unknown",
       pending: 0,
@@ -76,6 +99,8 @@ export const useCartStore = create<CartState>()(
         })),
 
       setSyncState: (syncState) => set({ syncState }),
+
+      markSynced: (userId) => set({ syncedUserId: userId }),
 
       setLines: (lines) => set({ lines }),
 
@@ -116,7 +141,11 @@ export const useCartStore = create<CartState>()(
           ),
         })),
 
+      /* After an order, keep the marker so this device does not re-merge. */
       clear: () => set({ lines: [] }),
+
+      /* On sign-out, forget the marker so a later sign-in merges afresh. */
+      clearAndResetSync: () => set({ lines: [], syncedUserId: null }),
 
       beginWrite: () => set((state) => ({ pending: state.pending + 1 })),
       endWrite: () =>
@@ -124,9 +153,19 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "jc-cart",
-      /* Only the lines are persisted: the identity and sync fields must never
-         come back from localStorage, or a stale signed-in flag would leak. */
-      partialize: (state) => ({ lines: state.lines }),
+      /*
+        The lines and syncedUserId are persisted. The merge marker has to survive
+        a refresh or a stale local cart could be merged back into the server after
+        the server cart was emptied on another device.
+
+        userId and syncState are deliberately NOT persisted: they describe the
+        live session, and restoring them from localStorage would leak a stale
+        signed-in flag.
+      */
+      partialize: (state) => ({
+        lines: state.lines,
+        syncedUserId: state.syncedUserId,
+      }),
     },
   ),
 );
@@ -145,11 +184,14 @@ export function useCartHasPendingWrite(): boolean {
 
 /**
  * FRD F5. Signing out wipes the local cart so the next person on the device
- * starts with an empty one. It only touches localStorage: the saved cart in
- * Neon is left alone, so signing back in restores it.
+ * starts with an empty one. It also forgets the merge marker, so a later sign-in
+ * on this device is treated as a fresh merge rather than being skipped.
+ *
+ * It only touches localStorage: the saved cart in Neon is left alone, so signing
+ * back in restores it.
  */
 export function clearLocalCart(): void {
-  useCartStore.getState().clear();
+  useCartStore.getState().clearAndResetSync();
 }
 
 /*

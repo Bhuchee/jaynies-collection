@@ -99,6 +99,11 @@ export function CheckoutForm({ defaultFullName, defaultEmail }: CheckoutFormProp
         return;
       }
 
+      /*
+        FRD F5: the server has emptied this shopper's saved cart in the same
+        transaction as the order. clear() keeps the synced marker, so this device
+        will not merge the now-empty local cart back onto the server later.
+      */
       clearCart();
       router.push(`/orders/${result.orderNumber}?placed=1`);
     } catch {

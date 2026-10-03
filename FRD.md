@@ -85,13 +85,14 @@ Sections, in order:
   - Empty state with a link to the shop.
 - **Checkout gate:** a signed-out shopper who presses "Proceed to checkout" is sent to `/signin?callbackUrl=/checkout` (see F6/F7). Signing in is never required to browse or to add to cart.
 - **Sync on sign-in:** immediately after sign-in the guest localStorage cart is merged into the saved cart. The rule is per product and size: **the higher quantity wins, capped at 10**. A line that exists only on one side is kept. After the merge the server cart is authoritative and the local copy is replaced by it.
-- **Checkout must wait for the merge** to finish before it renders or decides the cart is empty, so a returning shopper is never redirected to `/cart` by mistake.
+- **The merge happens only once, for a guest-built cart.** The client keeps a persisted marker, `syncedUserId`, in the same localStorage entry as the cart lines. If `syncedUserId` equals the current user id, the merge is **never** run again and local lines are never pushed back to the server. The marker is written only after the server has actually answered, so a failed merge is retried rather than skipped forever.
+- **For an already-synced shopper**, page load and tab focus load the saved cart, and that server cart **replaces** the local cart completely. An empty server cart is a real answer, so the local cart is emptied too. Otherwise a stale local cart could re-add items after another device placed an order and emptied the saved cart.
+- **Checkout must wait for that first load or merge** to finish before it renders or decides the cart is empty, so a returning shopper is never redirected to `/cart` by mistake.
 - **While signed in,** every add, quantity change and remove is written to the server as well as to localStorage.
-- **Reload from the server** on page load and when the tab regains focus, so a change made on one device appears on another without a manual refresh.
-- **After a successful order** the saved cart is cleared in the same transaction that writes the order (F8 step 8), and the local copy is cleared by the client.
-- **On sign-out** the local cart is cleared, so the next person on a shared device never sees it. The saved server cart is not touched, so the shopper gets it back when they sign in again.
+- **After a successful order** the saved cart is cleared in the same transaction that writes the order (F8 step 8), and the device that placed it clears its local cart too, **keeping** the `syncedUserId` marker so it cannot re-merge.
+- **On sign-out** the local cart is cleared **and the marker is forgotten**, so the next person on a shared device never sees it and a later sign-in is treated as a fresh merge. The saved server cart is not touched, so the shopper gets it back when they sign in again.
 - Prices shown in the cart are never trusted by the server (see F8).
-- **Acceptance:** a guest can fill a cart and sign in without losing anything; the same cart appears on a second device; and after ordering, the cart is empty everywhere.
+- **Acceptance:** a guest can fill a cart and sign in without losing anything; the same cart appears on a second device; after ordering, the cart is empty everywhere and stays empty after a refresh on any device.
 
 ### F6 — Authentication
 - **Sign-in page:** `/signin` with the logo, one "Continue with Google" button, and a `callbackUrl` so the user returns to the page they came from.

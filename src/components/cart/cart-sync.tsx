@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
   addSavedCartLine,
   fetchSavedCart,
@@ -19,39 +19,73 @@ type CartSyncProps = {
 /**
  * FRD F5. Three jobs, in order of importance:
  *
- *  1. On sign-in, merge the guest localStorage cart into the saved cart and take
- *     the server's answer as the truth.
+ *  1. Merge the guest cart into the saved cart EXACTLY ONCE, for a cart that was
+ *     built while signed out. The persisted `syncedUserId` marker decides this,
+ *     not an in-memory ref: a ref is lost on every refresh, which used to let a
+ *     stale local cart be merged back into a server cart that another device had
+ *     already emptied by ordering.
  *  2. While signed in, mirror every add, quantity change and remove to the
  *     server.
- *  3. Reload from the server on page load and whenever the tab regains focus,
- *     so another device's change appears without a manual refresh.
+ *  3. For an already-synced shopper, load the server cart on page load and on tab
+ *     focus, and let it REPLACE the local cart completely. An empty server cart is
+ *     a real answer, so the local cart must be emptied too.
  *
- * The merge runs once per user id. A focus reload is skipped while a write is in
- * flight, so it can never overwrite a change that has not been saved yet.
+ * A focus reload is skipped while a write is in flight, so it can never overwrite
+ * a change that has not been saved yet.
  */
 export function CartSync({ userId }: CartSyncProps) {
-  const mergedFor = useRef<string | null>(null);
-
   useEffect(() => {
     const store = useCartStore.getState();
     store.setIdentity(userId);
   }, [userId]);
 
-  /* The sign-in merge, plus a plain load on every page load while signed in. */
+  /*
+    FRD F5. The first load for a shopper on this device either merges the guest
+    cart, or, if this device has already merged for this user, just loads the saved
+    cart. After the marker is set, localStorage is never pushed back to the server.
+  */
   useEffect(() => {
     if (!userId) return;
-    if (mergedFor.current === userId) return;
 
-    mergedFor.current = userId;
     const store = useCartStore.getState();
+
+    if (store.syncedUserId === userId) {
+      /* Already synced on this device: the server cart is the whole truth. */
+      store.setSyncState("syncing");
+
+      let cancelled = false;
+
+      void (async () => {
+        try {
+          const result: CartActionResult = await fetchSavedCart();
+
+          if (cancelled) return;
+
+          if (result.ok) {
+            /* Replaces local lines outright, including with an empty list. */
+            useCartStore.getState().setLines(result.lines);
+          }
+        } catch {
+          /* Keep the local cart and let the shopper carry on. */
+        } finally {
+          if (!cancelled) {
+            useCartStore.getState().setSyncState("ready");
+          }
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    /* Not merged yet: this local cart was built while signed out. */
     store.setSyncState("syncing");
 
     let cancelled = false;
 
     void (async () => {
       try {
-        /* The local lines are the guest cart, which is exactly what should be
-           merged on the first load for this user. */
         const result: CartActionResult = await mergeGuestCart(
           useCartStore.getState().lines,
         );
@@ -59,14 +93,16 @@ export function CartSync({ userId }: CartSyncProps) {
         if (cancelled) return;
 
         if (result.ok) {
-          useCartStore.getState().setLines(result.lines);
+          const state = useCartStore.getState();
+          state.setLines(result.lines);
+          /* Only mark it synced once the server has actually answered, so a
+             failed merge is retried rather than skipped forever. */
+          state.markSynced(userId);
         }
-
-        useCartStore.getState().setSyncState("ready");
       } catch {
+        /* A failed merge must not trap the shopper on a loading screen. */
+      } finally {
         if (!cancelled) {
-          /* A failed merge must not trap the shopper on a loading screen: keep
-             the local cart and let them carry on. */
           useCartStore.getState().setSyncState("ready");
         }
       }
@@ -77,9 +113,11 @@ export function CartSync({ userId }: CartSyncProps) {
     };
   }, [userId]);
 
-  /* Reload when the tab comes back, so another device's change shows up. */
+  /* Focus reload, for a shopper who has already merged. The server cart replaces
+     the local cart completely, and an empty server cart empties the local one. */
   useEffect(() => {
     if (!userId) return;
+    if (useCartStore.getState().syncedUserId !== userId) return;
 
     async function reload() {
       const state = useCartStore.getState();
@@ -112,14 +150,14 @@ export function CartSync({ userId }: CartSyncProps) {
     };
   }, [userId]);
 
-  /* Sign-out: clear the local cart so the next person on the device sees none.
-     The saved cart stays in Neon, so the shopper gets it back on sign-in. */
+  /* Sign-out: clear the local cart AND forget the merge marker, so the next person
+     on the device sees none and a later sign-in is a fresh merge. The saved cart
+     stays in Neon, so the shopper gets it back when they sign in again. */
   useEffect(() => {
     if (userId) return;
     if (useCartStore.getState().syncState === "unknown") return;
 
-    useCartStore.getState().clear();
-    mergedFor.current = null;
+    useCartStore.getState().clearAndResetSync();
   }, [userId]);
 
   return null;
