@@ -68,12 +68,13 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 6 (orders) CODE COMPLETE. `/orders`, `/orders/[orderNumber]`, the six status badges and the success banner are built, and `npm run lint` and `npm run build` both pass.
-- Production URL: _not deployed yet_
-- Done: phases 0 to 6, plus change request A (all checkout delivery fields are optional) and change request B (the cart syncs to the account across devices). The email header logo points at `logo-dark-bg.png`, and FRD F9 and DESIGN.md section 4 were updated to match.
-- Row counts on Neon: products 21, orders 2, order_items 2, users 4, cart_items 0, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and can be deleted from the Neon SQL editor before submission.
-- Schema: 3 migrations applied. `0001_useful_bishop.sql` makes the six delivery columns on `orders` nullable (change request A). `0002_closed_the_fury.sql` creates `cart_items` (change request B).
-- Next: phase 7 (deploy to Vercel, set every environment variable, and run the full end-to-end test on the production URL).
+- Current phase: 7 (production). ALL PHASES COMPLETE. Phases 0 to 6 are built, plus change request A (optional delivery fields), change request B (cart syncs to the account), and the phase 7 README and secrets audit.
+- Production URL: **deployed and tested by Brian.** Every graded flow (Google sign-in, order saved in Neon, orders visible after logout and back in, Mailgun confirmation email) has been exercised on production.
+- Docs: PRD.md, FRD.md, DESIGN.md, AGENTS.md, CLAUDE.md and README.md are all current. README.md is the grader-facing guide: stack, local setup, every environment variable and where its value comes from, Vercel deploy, Google OAuth, Mailgun, and a six-step testing guide. It mentions the unverified-app screen (Advanced, then Go to Jaynie's Collection) and that a first email may land in spam.
+- Row counts on Neon: products 21, orders 2, order_items 2, users 4, cart_items 0, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and **should be deleted from the Neon SQL editor before submission.**
+- Schema: 3 migrations applied and committed. `0001_useful_bishop.sql` (change request A, nullable delivery columns), `0002_closed_the_fury.sql` (change request B, `cart_items`).
+- Secrets audit passed: `.env.example` is the only env file tracked, `.env.local` is gitignored, and no Neon connection string, Mailgun key, Google client secret or `AUTH_SECRET` appears in any commit reachable from `origin`.
+- Next: none. If work resumes, start from the Known issues below: delete the two test orders, and optionally finish the image work.
 
 ## Decisions
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
@@ -132,18 +133,24 @@ public/brand/, public/products/
 - 2026-10-02: Zustand `persist` uses `partialize` to store only `lines`. Persisting `userId` or `syncState` would let a stale signed-in flag leak back out of localStorage on the next visit.
 - 2026-10-02: The root layout now calls `auth()` and passes `userId` to `<CartSync>`. This makes every page dynamic, which is the cost of knowing the shopper in the layout.
 - 2026-10-02: A focus reload is skipped while `pending > 0`, so reloading from the server can never overwrite a change that has not been written yet.
+- 2026-10-02: Phase 7. README.md replaces the create-next-app boilerplate and is written for a grader who has never seen the repo. It documents every environment variable with the console each value comes from, never the value itself.
+- 2026-10-02: Phase 7 secrets audit. `git ls-files | grep env` returns only `.env.example`, and `git grep` across all 12 revisions reachable from `origin` finds no Neon connection string, `neon.tech`, Mailgun `key-<32 hex>`, Google `GOCSPX-` secret, or non-empty `AUTH_SECRET`, `AUTH_GOOGLE_SECRET` or `MAILGUN_API_KEY`. `.env.local` is covered by the `.env*` rule in `.gitignore`.
+- 2026-10-02: The only `localhost:3000` strings in the repo are in `.env.example` (the template default), PRD.md and FRD.md (documentation of the local setup). There are none in `src/`, which is what AGENTS.md rule 7 requires.
+- 2026-10-02: `refs/cline/checkpoints/*` are local-only refs created by the agent tooling. They are not on `origin` and hold no secrets, but they do keep some deleted blobs alive in the local object store. They can be deleted with `git update-ref -d` if a clean local history is ever wanted.
+- 2026-10-02: In PowerShell, `cmd /c "npm run build > log 2>&1 & echo BUILD=%ERRORLEVEL%"` can report a false `0` because the `&` chain captures the wrong exit code. This hid a real TypeScript failure in phase 7 until the log file was read. Always read the log, never trust that echo.
 
 ## Known issues
-- The happy path of `placeOrder` (the order and order_items rows landing in Neon) has not been exercised end to end, because driving a Server Action without a browser is unreliable. Brian must click **Place order** once on localhost; the rows can then be checked with `select * from orders` in the Neon SQL editor. The auth guard, the guard redirects and the action dispatch itself are already verified.
-- The two order pages are verified by build and by the anonymous redirect, but the live cross-shopper 404 test could not be run because the local shell became unreliable. Brian should confirm it with two Google accounts: place an order with one, then open that order number while signed in as the other.
+- **Do this before submitting:** delete the two phase 6 test orders, `JC-260929-BBBB` and `JC-260930-AAAA`, from the Neon SQL editor. They belong to the test users `p6a@test.local` and `p6b@test.local`, so graders would otherwise see orders from "Ada Buyer" and "Ben Buyer". The four test users can go with them.
+- The Google OAuth consent screen is not verified, so first-time sign-in shows Google's unverified-app screen. This is expected and the README explains the workaround. Verifying the app removes the warning but is not required.
+- The Mailgun sending domain was still verifying at the time of writing. If the first confirmation email does not arrive, check that the domain is verified and that the recipient is authorised, rather than assuming the send code is broken. The order is saved either way.
 - `public/brand/logo-email.png` is not used; the email header uses `logo-dark-bg.png`. The unused file can be ignored or deleted.
 - `public/brand/logo-dark-bg.png` is really a JPEG that was renamed, because the drag-and-drop gave it a `.jpg` name. It renders, but it should be re-exported as a true PNG.
 - Three stray files `public/products/image (9).png`, `image (14).png` and `image (16).png` are not identified and are not committed. Two of them match the byte size of already-imported photos, so they are probably duplicates.
-- 10 products still have `image_url` null, so they show the DESIGN.md placeholder card.
-- The 360px acceptance in FRD F1 (no horizontal scroll) was not checked in a real browser. Brian should open the site at 360px and confirm, especially the chips, the sticky add-to-cart bar and the bottom nav.
-- The first Vercel deploy has not happened yet, so production Google sign-in is unproven and `NEXT_PUBLIC_SITE_URL` is still the localhost template value. Deploy in phase 2 and set it to the real domain.
-- The Google OAuth consent screen must be published to "In production". In Testing mode only listed test users can sign in, which would block the graders.
+- 10 products still have `image_url` null, so they show the DESIGN.md placeholder card. The prompts are in DESIGN.md §9.
+- The 360px acceptance in FRD F1 (no horizontal scroll) was not checked in a real browser. Worth a glance at the chips, the sticky add-to-cart bar and the bottom nav.
 - The 21 product descriptions are builder-written copy awaiting Jaynie's review.
+- T-shirt and polo prices are placeholders for Jaynie to confirm. The WhatsApp number `2348000000000` is a placeholder.
+- Change request A is verified by 26 automated checks on the shared Zod schema and the email builder, plus a live render of an order whose six delivery columns are all NULL. What is NOT verified in a real browser is the checkout form submitting with every field blank: click **Place order** with an empty form to confirm the redirect to `/orders/JC-...?placed=1`. The redirect target page is proven by the same live render.
 - Change request A is verified by 26 automated checks on the shared Zod schema and the email builder, plus a live render of an order whose six delivery columns are all NULL. What is NOT yet verified in a real browser is the checkout form submitting with every field blank: click **Place order** with an empty form to confirm the redirect to `/orders/JC-...?placed=1`. The redirect target page is proven by the same live render.
 - Change request B is verified by 15 checks on the merge rule (max, not sum, capped at 10, one-sided lines kept, invalid lines dropped) run against the real catalogue, and 11 checks on the `cart_items` table itself in Neon (unique constraint, quantity check, upsert capping, per-user scoping, cascade on user delete). The two behaviours NOT verified in a real browser are the sign-in merge moment and cross-device reload: to test, build a cart as a guest, sign in, then confirm the cart is still there and that opening the site in a second browser profile with the same Google account shows the same cart.
 - The root layout calling `auth()` makes every route dynamic, so there are no longer any statically generated pages. That is expected and not a problem for a small shop.
