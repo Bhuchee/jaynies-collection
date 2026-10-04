@@ -3,7 +3,11 @@
 Persistent context for any coding agent (Claude Code, Codex, Cline, and others). **Read this file first, then PRD.md, FRD.md, and DESIGN.md before writing code.** If anything conflicts, the order of precedence is PRD.md for scope, FRD.md for behaviour and data, and DESIGN.md for the look.
 
 ## Project
-An online shop for Jaynie's Collection, a handmade fashion brand. It is the HNG 15 Lesson 2 individual task, due Friday 2 Oct 2026 at 11:59 PM WAT. The graded parts are Google sign-in, orders saved in Neon, orders still visible after logging out and back in, and a Mailgun confirmation email.
+An online shop for Jaynie's Collection, a handmade fashion brand. It was the HNG 15 Lesson 2 individual task (due Friday 2 Oct 2026, graded parts: Google sign-in, orders saved in Neon, orders still visible after logging out and back in, and a Mailgun confirmation email), and **Lesson 3** adds an Android app, due **Monday 5 Oct 2026, 11:59 PM WAT**.
+
+The Lesson 3 graded parts are **R1** the same Google account logs in on the website and in the app, **R2** a cart item added on the website appears in the app's cart almost instantly (2 seconds), and **R3** it works on a physical Android phone. See PRD §2A.
+
+Lesson 2 is complete and deployed. **Lesson 3 is the only work in scope.**
 
 ## Stack (do not change without updating PRD.md)
 - Next.js (App Router) and TypeScript in strict mode
@@ -17,27 +21,47 @@ An online shop for Jaynie's Collection, a handmade fashion brand. It is the HNG 
 - Vercel
 - npm
 
+### Lesson 3 additions (mobile only, `mobile/package.json`)
+- Expo (React Native) and expo-router
+- expo-web-browser for the Google sign-in hand-off (system browser, never a WebView)
+- expo-secure-store for the bearer token
+- expo-linking plus React Native `AppState` for deep links and foreground/resume
+- lucide-react-native for icons
+- @expo-google-fonts/poppins for the type
+
+**These are installed only in `mobile/`. The website's `package.json` must not gain any of them, and nothing in `src/` may import from `mobile/`.**
+
 ## Commands
 ```
 npm run dev          # local dev on :3000
-npm run build        # must pass before every push
+npm run build        # must pass before every push. READ THE LOG, not the exit code.
 npm run lint
 npm run db:generate  # drizzle-kit generate
 npm run db:migrate   # drizzle-kit migrate
 npm run db:seed      # tsx src/db/seed.ts
+
+cd mobile
+npm install          # separate node_modules from the website
+npm run dev          # Expo dev server; scan the QR code with the physical phone
+npm run android      # same, targeting Android directly
+npx expo start --tunnel   # fallback when the phone cannot reach this laptop
+npx tsc --noEmit    # type-check the app
 ```
 
 ## Folder structure
 ```
 src/
-  app/            # routes (see FRD §5)
-  actions/        # Server Actions (place-order.ts)
+  app/            # routes (see FRD §5), including api/v1/** (FRD F14, F15)
+  actions/        # Server Actions (place-order.ts, cart.ts as thin wrappers)
   auth.ts         # Auth.js config
   components/     # layout/, home/, product/, cart/, checkout/, orders/, ui/, icons/
   db/             # schema.ts, index.ts, seed.ts
   emails/         # order-confirmation.ts (HTML + text builders)
-  lib/            # money.ts, delivery.ts, order-number.ts, mailgun.ts, queries.ts, validation.ts
+  lib/            # money.ts, delivery.ts, order-number.ts, mailgun.ts, queries.ts,
+                  # validation.ts, cart.ts (F14), api-auth.ts, api-response.ts,
+                  # mobile-auth.ts (F15)
   store/          # cart.ts (Zustand)
+mobile/           # Expo app, a SEPARATE npm project (FRD F16)
 public/brand/, public/products/
 ```
 
@@ -55,10 +79,35 @@ public/brand/, public/products/
 11. Don't add features from the PRD's out-of-scope list (payments, bespoke, admin, wishlist, reviews, stock, owner order-copy email).
 12. Don't add new dependencies beyond the stack above without a one-line reason in the Decisions log.
 
+### Lesson 3 rules (mobile, API and shared code)
+
+13. **The website and the app use the same HTTP endpoints.** The website's cart client calls `/api/v1/cart` with its cookie session, exactly as the app does with its bearer token. Business logic lives in `src/lib/` functions called by the API routes; no route file holds logic, and the Server Actions remain as thin wrappers so there is always a second working path.
+14. **Money stays integer kobo across the API and the app.** Only `lib/money.ts` on the website and its one equivalent in the app may format it. No endpoint returns a formatted price, and no endpoint accepts one.
+15. **The server recalculates every price**, on the website and in every API route, from `products.price_kobo`. Prices from the client, the app or localStorage are display-only.
+16. **Every user-scoped API query is scoped to the `userId` from `getUserFromRequest`.** No endpoint may take a `userId` from the request. Another shopper's order number returns `404`, not `403`.
+17. **`getUserFromRequest` accepts a bearer token or the Auth.js cookie session, in that order.** Every authenticated route uses it. A token is never logged, never placed in a query string, and never returned to another user.
+18. **PKCE is required on the mobile sign-in.** Store a SHA-256 hash of the one-time code plus the S256 `code_challenge`; verify the verifier with a constant-time comparison; compare `state` in the app; allowlist the redirect scheme. The raw code and the verifier are never stored or logged.
+19. **The app holds no secrets.** No API key, database URL or OAuth secret goes into `mobile/`. The bearer token goes in `expo-secure-store`, never AsyncStorage and never an env var. `mobile/.env` is gitignored; only `EXPO_PUBLIC_API_URL` is committed, in `mobile/.env.example`.
+20. **The production website must keep working after every merge.** Re-test sign in, cart, checkout, orders and the email before each merge. `npm run build` must pass and **its log must be read**, because the exit code can lie.
+21. **`mobile/` is a separate npm project.** Its own `package.json`, `tsconfig.json` and `node_modules`. Nothing in `src/` imports from `mobile/`, and `mobile/` must be excluded from the root `tsconfig.json` and `eslint.config.mjs` or the website build breaks.
+
 ## Git workflow
 - Repo: `bhuchee/jaynies-collection`. Keep `main` deployable.
-- One branch per phase (`phase-2-auth`, and so on). Merge to `main` when `npm run build` passes.
-- Use conventional commits: `feat(checkout): add delivery zone selector`.
+- One branch per phase. Lesson 2 used `phase-N-*`; Lesson 3 uses `L3-0-docs`, `L3-1-api`, `L3-2-app-auth`, `L3-3-app-shop`, `L3-4-app-orders`, `L3-5-phone-test`.
+- Merge with **`git merge --ff-only`**. **Never force-push**, and never rebase a branch that has been pushed.
+- Use conventional commits: `feat(checkout): add delivery zone selector`, `feat(api): add cart endpoints`.
+
+## Lesson 3 phases (see PRD §7A for time boxes)
+| Phase | Branch | Scope |
+|---|---|---|
+| L3-0 | `L3-0-docs` | PRD v2.0, FRD F14 to F17, AGENTS.md rules and phases. Docs only, no code. |
+| L3-1 | `L3-1-api` | `/api/v1` products, cart, orders, me; `getUserFromRequest`; shared `src/lib/cart.ts`; **switch the website's cart client to the HTTP endpoints**; the `mobile_auth_codes` migration. |
+| L3-2 | `L3-2-app-auth` | Expo project in `mobile/`, expo-router, theme, secure store, browser hand-off, PKCE exchange. |
+| L3-3 | `L3-3-app-shop` | Shop, product, cart and the 2-second live sync. |
+| L3-4 | `L3-4-app-orders` | Orders list and detail, account, sign out, checkout hand-off, polish. |
+| L3-5 | `L3-5-phone-test` | The real-phone script in FRD §6, README for the app, optional EAS APK. |
+
+**Work on the current phase only, and stop at the end of it with a report. Do not start the next phase without Brian's go-ahead.**
 
 ## Workflow for each session
 1. Read the **Status** section below.
@@ -68,7 +117,15 @@ public/brand/, public/products/
 ---
 
 ## Status
-- Current phase: 7 (production). ALL PHASES COMPLETE. Phases 0 to 6 are built, plus change request A (optional delivery fields), change request B (cart syncs to the account), and the phase 7 README and secrets audit.
+- Current phase: **L3-0 (docs), in progress.** Lesson 3 is under way; Lesson 2 is complete, deployed and tested on production.
+- Lesson 3 deadline: **Monday 5 Oct 2026, 11:59 PM WAT.** Schedule: L3-0 now, L3-1 and L3-2 on Sunday, L3-3 to L3-5 on Monday, and Monday 23:00 to 23:59 kept as buffer. Full time boxes in PRD §7A.
+- **L3-0 (this phase):** PRD bumped to v2.0 with the Lesson 3 sections (2A, 4A, 5A, 6A, 7A, 8A, 9A). FRD gained F14 (API), F15 (mobile sign-in with PKCE), F16 (the app) and F17 (live sync), the `mobile_auth_codes` table, the feature-to-implementation rows, the Lesson 3 user flows and a 12-step phone test script. AGENTS.md gained the mobile stack, the mobile commands, rules 13 to 21, the L3 branch names and the phase table. **No code has been written yet.**
+- Brian's review of v2.0 (5 Oct 2026) asked for four changes, all now applied: (1) the website's cart client calls the same `/api/v1/cart` HTTP endpoints as the app, not merely the same underlying functions; (2) PKCE on the mobile sign-in; (3) the app's hand-off to `/checkout` opens the system browser and may ask for Google sign-in again because the website uses cookies, documented as expected behaviour in the FRD and the phone script; (4) the schedule pulled forward, with L3-0 now and Monday evening as buffer.
+- Lesson 2 state, unchanged: phases 0 to 7 built, plus change request A (optional delivery fields) and change request B (cart syncs to the account). Every graded Lesson 2 flow has been exercised on production. Docs: PRD.md, FRD.md, DESIGN.md, AGENTS.md, CLAUDE.md, README.md.
+- Lesson 2 schema: 3 migrations applied and committed, `0001_useful_bishop.sql` and `0002_closed_the_fury.sql`. Lesson 3 adds one migration for `mobile_auth_codes` in L3-1.
+- Row counts on Neon: products 21, orders 2, order_items 2, users 4, cart_items 0, sessions 0. The 2 orders are the phase 6 cross-shopper test rows and **should be deleted from the Neon SQL editor before the Lesson 2 submission.**
+- Secrets audit passed for Lesson 2: `.env.example` is the only tracked env file, `.env.local` is gitignored, and no credential appears in any commit reachable from `origin`. Lesson 3 adds no server env var, and the app holds no secrets at all.
+- Next: **L3-1**, on Brian's go-ahead. Branch `L3-1-api`.
 - Production URL: **deployed and tested by Brian.** Every graded flow (Google sign-in, order saved in Neon, orders visible after logout and back in, Mailgun confirmation email) has been exercised on production.
 - Docs: PRD.md, FRD.md, DESIGN.md, AGENTS.md, CLAUDE.md and README.md are all current. README.md is the grader-facing guide: stack, local setup, every environment variable and where its value comes from, Vercel deploy, Google OAuth, Mailgun, and a six-step testing guide. It mentions the unverified-app screen (Advanced, then Go to Jaynie's Collection) and that a first email may land in spam.
 - Row counts on Neon: products 21, orders 2, order_items 2, users 4, cart_items 0, sessions 0. The 2 orders are the phase 6 cross-shopper test rows (`JC-260929-BBBB`, `JC-260930-AAAA`) and **should be deleted from the Neon SQL editor before submission.**
@@ -77,6 +134,20 @@ public/brand/, public/products/
 - Next: none. If work resumes, start from the Known issues below: delete the two test orders, and optionally finish the image work.
 
 ## Decisions
+
+### Lesson 3 (2026-10-05)
+
+- **The app is a client of a new `/api/v1` in this same Next.js project.** One deployment, one database, one Auth.js config. A second backend would have doubled the places a price or a delivery fee could be wrong.
+- **The website's cart client was switched onto the `/api/v1/cart` HTTP endpoints**, authenticated with its cookie session, so "the same endpoints" is literally true rather than merely "the same behaviour". Brian chose this over keeping the website on Server Actions that wrap the same `src/lib/` functions, on the grounds that only an HTTP call proves the requirement. The Server Actions stay in place as thin wrappers, so there is always a second working path and the switch can be reverted one call site at a time.
+- **PKCE (S256) on the mobile sign-in, plus `state`.** The one-time code travels in a deep link and could be read from a browser history or a log. Without PKCE a stolen code is a full account takeover inside its 2-minute life; with it, a stolen code is useless without the verifier, which never leaves the device. `code_challenge` sits beside `code_hash` in `mobile_auth_codes`, the comparison is constant-time, and every failure returns the same generic `400 invalid_grant` so the endpoint does not say which check failed.
+- **The website's second sign-in prompt after the app hand-off is expected, not a defect.** The website authenticates with a cookie session and the app holds a bearer token, so the system browser has no session of its own. The app cannot inject one, and the two sessions are deliberately independent so signing out of one surface leaves the other signed in. It is written into FRD F16, PRD 6A (R1c), the 9A risk table, the README and step 8 of the phone script, precisely so nobody later "fixes" it by weakening sign-in.
+- **Checkout stays on the website.** A second `POST /orders` would mean a second copy of the price-recalculation and email logic, which is the one place this project cannot be sloppy (rule 3).
+- **A mobile bearer token is an ordinary `sessions` row.** Auth.js stores `sessions.sessionToken` in plaintext and looks it up by equality, confirmed by reading `node_modules/@auth/core/lib/actions/session.js`, so a direct lookup is the correct check. This avoids inventing a parallel token system. 32 random bytes, 30-day expiry, no refresh token: a lapsed session means signing in again through the browser.
+- **The 2-second poll is one-directional.** The app polls `GET /api/v1/cart`; the website keeps its existing focus refresh and is deliberately not changed into polling, because the graded direction is website to app. Polling pauses during a write, stops when backgrounded, resumes on foreground, and backs off 4s then 8s on failure.
+- **No new server environment variables and no new Google OAuth client.** The redirect-scheme allowlist is a code constant in `lib/mobile-auth.ts` rather than an env var, so it is reviewable in the diff.
+- **`mobile/` is excluded from the root `tsconfig.json` and `eslint.config.mjs`.** The website's `npm run build` type-checks and lints the repo, so without this the Expo sources and React Native types would break the website build. Found while reading the root configs in L3-0, before `mobile/` existed.
+
+### Lesson 2 (2026-10-02 and 2026-10-03)
 - 2026-10-02: Neon instead of Supabase, which HNG explicitly allows.
 - 2026-10-02: No payment step. Jaynie confirms payment on WhatsApp.
 - 2026-10-02: The cart lives in localStorage. Orders live in the DB.
@@ -158,7 +229,18 @@ public/brand/, public/products/
 - 2026-10-02: In PowerShell, `cmd /c "npm run build > log 2>&1 & echo BUILD=%ERRORLEVEL%"` can report a false `0` because the `&` chain captures the wrong exit code. This hid a real TypeScript failure in phase 7 until the log file was read. Always read the log, never trust that echo.
 
 ## Known issues
-- **Do this before submitting:** delete the two phase 6 test orders, `JC-260929-BBBB` and `JC-260930-AAAA`, from the Neon SQL editor. They belong to the test users `p6a@test.local` and `p6b@test.local`, so graders would otherwise see orders from "Ada Buyer" and "Ben Buyer". The four test users can go with them.
+
+### Lesson 3 (open)
+
+- **`mobile/` does not exist yet.** Nothing in the Lesson 3 design is built or verified. Every claim in F14 to F17 is a specification, not an observation. In particular, the following are UNVERIFIED until the relevant phase reports them: the `exp://` deep-link round trip on hardware; the 2-second sync measured on a phone; PKCE rejection paths (each needs a `curl` proof, not just a happy path); and whether the phone can load the Expo dev server over this network.
+- **The Expo SDK version is not pinned yet.** It gets pinned in `mobile/package.json` in L3-2 and must be stated in the README. If the phone's Expo Go is a different SDK major the app will not load at all, and the fix is an Expo Go update on the phone.
+- **The website asking for Google sign-in again after the app hand-off will look like a bug to a first-time reader.** It is expected (see the Decisions log). It must be called out in the README, not left for someone to discover.
+- **`mobile_auth_codes` rows are never swept automatically.** The design notes that a plain `DELETE ... WHERE expires_at < now()` is safe; nothing runs it yet. At the current volume it does not matter, and no code path depends on old rows.
+- **Two day-blocks (Sunday and Monday) carry five phases.** If L3-1 or L3-2 slips, cut L3-4 polish and the EAS APK and spend the Monday 23:00 to 23:59 buffer. Do not cut the API or the sign-in.
+
+### Lesson 2 (carried forward, still open)
+
+- **Do this before submitting Lesson 2:** delete the two phase 6 test orders, `JC-260929-BBBB` and `JC-260930-AAAA`, from the Neon SQL editor. They belong to the test users `p6a@test.local` and `p6b@test.local`, so graders would otherwise see orders from "Ada Buyer" and "Ben Buyer". The four test users can go with them.
 - The Google OAuth consent screen is not verified, so first-time sign-in shows Google's unverified-app screen. This is expected and the README explains the workaround. Verifying the app removes the warning but is not required.
 - The Mailgun sending domain was still verifying at the time of writing. If the first confirmation email does not arrive, check that the domain is verified and that the recipient is authorised, rather than assuming the send code is broken. The order is saved either way.
 - `public/brand/logo-email.png` is not used; the email header uses `logo-dark-bg.png`. The unused file can be ignored or deleted.
