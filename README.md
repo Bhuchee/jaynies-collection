@@ -43,6 +43,40 @@ website has a merge step.
 
 ## Running it locally
 
+### The Android app (mobile/)
+
+The app is a **separate npm project**. It has its own `package.json`,
+`node_modules` and `tsconfig.json`, and the website never imports from it.
+
+**Requirements:** Node 20.19+ or 22.13+ (Expo SDK 57 asks for this; Node 22.12
+works with warnings), the **Expo Go** app from the Play Store on your phone, and
+your phone on the same Wi-Fi as this computer.
+
+```bash
+cd mobile
+npm install
+cp .env.example .env          # then put your Vercel URL in EXPO_PUBLIC_API_URL
+npm start                     # shows a QR code: scan it with Expo Go on the phone
+```
+
+**What to scan:** the QR code in the terminal, using the Expo Go app's built-in
+scanner (open Expo Go, tap **Scan QR code**, point the phone at the screen).
+It will then connect over your Wi-Fi and load the app.
+
+- **Phone cannot reach the computer?** Try `npm run tunnel`. That routes the
+  bundle over the internet instead of the local network.
+- **App will not load at all?** Expo Go only supports one SDK major. This app
+  pins **Expo SDK 57** (`expo@~57.0.26`, React Native 0.86.3). If the app fails
+  to load, update Expo Go on the phone.
+- **Type-check the app:** `npx tsc --noEmit` inside `mobile/`.
+
+`mobile/.env` is gitignored and holds **only** `EXPO_PUBLIC_API_URL`, which is a
+public URL, not a secret. The app holds no API key, no database URL and no OAuth
+secret; its bearer token is kept in the Android keystore via
+`expo-secure-store`, never in an env var.
+
+### The website
+
 Requires Node 22.13 or newer and npm.
 
 ```bash

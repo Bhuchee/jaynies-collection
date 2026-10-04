@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Jaynie's Collection",
+    "slug": "jaynies-collection",
+    "version": "1.0.0",
+    "scheme": "jaynies",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jayniescollection.app"
+    },
+    "android": {
+      "package": "com.jayniescollection.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

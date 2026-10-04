@@ -10,6 +10,17 @@
 !.yarn/releases
 !.yarn/versions
 
+# Expo app (a separate npm project). mobile/node_modules is its own tree, and the
+# Expo caches and build output must never be committed (AGENTS.md rule 21).
+mobile/node_modules
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/web-build/
+mobile/.env
+mobile/.env.local
+mobile/.env.*.local
+
 # testing
 /coverage
 
