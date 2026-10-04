@@ -217,6 +217,43 @@ export const cartItems = pgTable(
   ],
 );
 
+/* ------------------------------------------------- Mobile sign-in codes */
+
+/*
+  FRD F15. One row per in-flight app sign-in, living for the 2 minutes between
+  the browser hand-off and the code exchange.
+
+  Only a SHA-256 HASH of the one-time code is stored: a stolen database row
+  cannot be replayed as a code. code_challenge holds the PKCE S256 challenge
+  (base64url of SHA-256 of the verifier), which is what binds the exchange to
+  the app that started it, so a leaked code is useless without the verifier.
+
+  user_id cascades, so deleting a user removes their outstanding codes. Expired
+  and used rows are inert and can be swept with a plain DELETE.
+*/
+export const mobileAuthCodes = pgTable(
+  "mobile_auth_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    codeHash: text("code_hash").notNull().unique(),
+    codeChallenge: text("code_challenge").notNull(),
+    state: text("state").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (code) => [
+    index("mobile_auth_codes_user_id_idx").on(code.userId),
+    index("mobile_auth_codes_expires_at_idx").on(code.expiresAt),
+  ],
+);
+
 /* ------------------------------------------------------------------ Types */
 
 export const PRODUCT_CATEGORIES = productCategoryEnum.enumValues;
@@ -228,6 +265,8 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type CartItem = typeof cartItems.$inferSelect;
 export type NewCartItem = typeof cartItems.$inferInsert;
+export type MobileAuthCode = typeof mobileAuthCodes.$inferSelect;
+export type NewMobileAuthCode = typeof mobileAuthCodes.$inferInsert;
 export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type OrderItem = typeof orderItems.$inferSelect;

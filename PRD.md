@@ -228,29 +228,29 @@ The Lesson 2 list above stays open and must still pass at the end of Lesson 3.
 
 ## 7A. Lesson 3 build phases and time boxes
 
-Lesson 2 is done and deployed. The phases below are the only work in scope. **L3-0 is now (Saturday). L3-1 and L3-2 are Sunday. L3-3 to L3-5 are Monday, with Monday evening held as buffer against the 11:59 PM deadline.**
+Lesson 2 is done and deployed. The phases below are the only work in scope. **L3-0 was Sunday 4 Oct. L3-1 and L3-2 are Sunday 4 Oct. L3-3 to L3-5 are Monday 5 Oct, with Monday evening held as buffer against the 11:59 PM deadline.**
 
-### L3-0: docs, now (Saturday)
+### L3-0: docs, Sunday 4 Oct (done)
 
 | # | Phase | Done when |
 |---|---|---|
 | **L3-0** | Docs: PRD v2.0, FRD API and app sections, AGENTS.md rules and phases | These documents agree with each other and with the code that exists today. No code written. |
 
-### L3-1 and L3-2: Sunday
+### L3-1 and L3-2: Sunday 4 Oct (today)
 
 | # | Phase | Target | Done when |
 |---|---|---|---|
 | **L3-1** | API layer: `/api/v1` products, cart, orders, me; `getUserFromRequest` accepting cookie **or** bearer; the shared `src/lib/` functions; **switch the website's cart client onto the `/api/v1/cart` HTTP endpoints**; the `mobile_auth_codes` migration with the PKCE columns | Sun 22:00 | The website's sign in, cart, checkout, orders and email all still pass on production, the website's cart traffic is visible in the browser network panel going to `/api/v1/cart`, and every endpoint answers correctly from `curl` with a real bearer token. |
 | **L3-2** | App scaffold and sign-in: Expo project in `mobile/`, expo-router, theme, secure store, browser hand-off, PKCE code exchange | Sun 23:59 | A physical Android phone signs in with Google through the system browser and lands back in the app signed in, on the same account, and a wrong verifier is rejected by `curl`. |
 
-### L3-3 to L3-5: Monday
+### L3-3 to L3-5: Monday 5 Oct
 
 | # | Phase | Target | Done when |
 |---|---|---|---|
-| **L3-3** | Shop, product, cart and live sync in the app | Mon 19:00 | A cart change made on the website appears in the app's cart within about 2 seconds, on the phone. |
-| **L3-4** | App orders (list and detail), account, sign out, checkout hand-off, polish to DESIGN.md | Mon 21:00 | Orders placed on the website are readable in the app, the hand-off to `/checkout` is documented as expected behaviour, and the app meets the R3 look and tap-target criteria. |
-| **L3-5** | Real-phone test of the whole R1/R1b/R1c/R2/R3 script, README for the app, optional EAS APK | Mon 22:30 | The requirements are demonstrated on hardware with the phone script run end to end, and the website is re-verified afterwards. |
-| — | **Buffer** | **Mon 23:00 to 23:59** | Phone-only surprises, a flaky Wi-Fi dev server, or an EAS build that takes longer than expected. Nothing new is started in this window. |
+| **L3-3** | Shop, product, cart and live sync in the app | Mon 5 Oct 19:00 | A cart change made on the website appears in the app's cart within about 2 seconds, on the phone. |
+| **L3-4** | App orders (list and detail), account, sign out, checkout hand-off, polish to DESIGN.md | Mon 5 Oct 21:00 | Orders placed on the website are readable in the app, the hand-off to `/checkout` is documented as expected behaviour, and the app meets the R3 look and tap-target criteria. |
+| **L3-5** | Real-phone test of the whole R1/R1b/R1c/R2/R3 script, README for the app, optional EAS APK | Mon 5 Oct 22:30 | The requirements are demonstrated on hardware with the phone script run end to end, and the website is re-verified afterwards. |
+| — | **Buffer** | **Mon 5 Oct 23:00 to 23:59** | Phone-only surprises, a flaky Wi-Fi dev server, or an EAS build that takes longer than expected. Nothing new is started in this window. |
 
 **Rules for these phases, on top of the existing ones:**
 - One branch per phase: `L3-0-docs`, `L3-1-api`, `L3-2-app-auth`, `L3-3-app-shop`, `L3-4-app-orders`, `L3-5-phone-test`. Merge with `--ff-only`, never a force-push, never a rebase of a pushed branch.

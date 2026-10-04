@@ -8,8 +8,23 @@ import {
   removeSavedCartLine,
   setSavedCartQuantity,
   type CartActionResult,
-} from "@/actions/cart";
+} from "@/lib/api-client";
 import { resetCartAfterSignOut, useCartStore } from "@/store/cart";
+
+/*
+  FRD F5 and F14.
+
+  FRD F14: this file now imports the website's cart CLIENT (lib/api-client.ts),
+  which calls the same /api/v1/cart endpoints the app calls, with the cookie
+  session. The mergeGuestCart name is kept from the old Server Action import
+  because the merge is deliberately still a Server Action (see api-client.ts for
+  why).
+
+  No behavioural change from the switch: the same three jobs, the same
+  CartActionResult shape, the same one-step adoption of the server's answer, the
+  same skip-while-pending guard on the focus reload. The result shape is identical
+  to what the actions returned, so nothing below this line changed.
+*/
 
 type CartSyncProps = {
   /** The session's user id, or null when signed out. Rendered on the server. */
