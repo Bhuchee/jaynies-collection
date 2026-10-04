@@ -21,12 +21,25 @@ Built as the HNG 15 Lesson 2 individual task.
 | ORM | Drizzle ORM with `drizzle-orm/neon-http`, migrations via drizzle-kit |
 | Auth | Auth.js v5 (`next-auth@beta`), Google provider, Drizzle adapter, database sessions |
 | Cart | Zustand with `persist` in localStorage, mirrored to a `cart_items` table in Neon |
+| API | JSON API under `/api/v1` in this same Next.js project, used by the website's cart client and by the Android app alike |
 | Validation | Zod, with a small react-hook-form resolver adapter |
 | Email | Mailgun HTTP API over `fetch`, no SDK |
 | Hosting | Vercel |
 
 The font is Poppins, loaded through `next/font`. There is no emoji anywhere in the
 code, the UI or the emails; icons are lucide or inline SVG.
+
+### One note on the guest cart (website only)
+
+The website lets a visitor build a cart **before** signing in: the lines sit in
+`localStorage` on that device, and on sign-in they are merged into the account's
+saved cart in Neon. The merge is **website-only**.
+
+The Android app has **no guest cart**. Its cart is server-authoritative from the
+start, because an app session is established through the browser hand-off before
+any cart is built, so there is never a local cart to merge up. Both surfaces
+still share the same saved cart and the same `cart_items` rows; only the
+website has a merge step.
 
 ## Running it locally
 
