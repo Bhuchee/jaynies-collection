@@ -41,6 +41,28 @@ const AUTH_SESSION_TIMEOUT_MS = 5 * 60 * 1000;
 
 type AuthSessionResult = Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>;
 
+/**
+ * Closes the auth session, but only where that is even possible.
+ *
+ * `dismissAuthSession` is iOS and web ONLY. On Android there is no modal to
+ * dismiss: `openAuthSessionAsync` has already returned because the Custom Tab
+ * closed, and calling this there THROWS. That throw happened on a real phone and
+ * it aborted the flow before the code was ever exchanged, so sign-in could not
+ * complete on Android at all.
+ *
+ * Even on a platform where it exists, closing the session is tidiness rather
+ * than correctness: the promise has already resolved. So this is best-effort
+ * and swallows its own errors, because the one thing this function must never do
+ * is break sign-in.
+ */
+async function dismissAuthSessionSafely(): Promise<void> {
+  try {
+    await WebBrowser.dismissAuthSession();
+  } catch {
+    /* Not available on this platform, or nothing was open. Either way, ignore. */
+  }
+}
+
 function openAuthSessionWithTimeout(
   authUrl: string,
   redirectUrl: string,
@@ -49,7 +71,7 @@ function openAuthSessionWithTimeout(
 
   const timeout = new Promise<AuthSessionResult>((resolve) => {
     setTimeout(() => {
-      void WebBrowser.dismissAuthSession();
+      void dismissAuthSessionSafely();
       resolve({ type: "cancel" } as AuthSessionResult);
     }, AUTH_SESSION_TIMEOUT_MS);
   });
@@ -102,9 +124,26 @@ export function useSignIn() {
       }
 
       /* --- Stage 2: the browser, and the shopper doing the signing in --- */
-      const result = await openAuthSessionWithTimeout(authUrl, CALLBACK_URL);
 
-      WebBrowser.dismissAuthSession();
+      /*
+        Everything from here to the end is wrapped. Stage 2 was the exact place
+        Android crashed: a platform-specific cleanup call threw before the code was
+        ever exchanged, and an uncaught throw inside an async handler is a red
+        screen, not a message. Any unexpected failure below now becomes the
+        on-screen sign-in error instead.
+      */
+      let result: AuthSessionResult;
+
+      try {
+        result = await openAuthSessionWithTimeout(authUrl, CALLBACK_URL);
+      } catch (cause) {
+        console.warn("[signin] the browser session failed to start", cause);
+        setError("Could not open Google sign-in. Please try again.");
+        return;
+      }
+
+      /* Best-effort on iOS and web, and a no-op on Android, which cannot do it. */
+      await dismissAuthSessionSafely();
 
       if (result.type !== "success") {
         console.log("[signin] browser closed without a result:", result.type);
@@ -162,8 +201,30 @@ export function useSignIn() {
         return;
       }
 
-      await signInToStore(token, user);
+      /*
+        Storing the token and navigating are the last things that can fail, and
+        they must not throw their way to a red screen either. A secure-store
+        failure here would otherwise look like a crash rather than a message.
+      */
+      try {
+        await signInToStore(token, user);
+      } catch (cause) {
+        console.warn("[signin] could not save the token", cause);
+        setError(
+          "Signed in, but this device would not save your session. Please try again.",
+        );
+        return;
+      }
+
       router.replace("/(tabs)");
+    } catch (cause) {
+      /*
+        The outermost net. Nothing below should throw, and if something
+        unforeseen does, the shopper gets the same kind of answer as any other
+        failure rather than a crash.
+      */
+      console.warn("[signin] unexpected failure", cause);
+      setError("Sign-in did not finish. Please try again.");
     } finally {
       setBusy(false);
     }

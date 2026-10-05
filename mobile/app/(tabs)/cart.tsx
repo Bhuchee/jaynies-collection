@@ -56,6 +56,7 @@ export default function CartScreen() {
   const remove = useCartStore((store) => store.remove);
 
   const [updatedLabel, setUpdatedLabel] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   /* Renders the poll time, so staleness is visible rather than silent. */
   useEffect(() => {
@@ -75,8 +76,17 @@ export default function CartScreen() {
     /*
       The system browser, not an in-app view. Checkout needs a real browser
       context, and the website decides sign-in with cookies.
+
+      Wrapped because this is a native call: if the browser cannot be opened on
+      this device, the shopper should read a sentence, not get a red screen.
     */
-    await WebBrowser.openBrowserAsync(checkoutUrl());
+    try {
+      await WebBrowser.openBrowserAsync(checkoutUrl());
+    } catch {
+      setCheckoutError(
+        "Could not open your browser. Open the website on your phone to finish checkout.",
+      );
+    }
   }
 
   if (!signedIn) {
@@ -223,6 +233,12 @@ export default function CartScreen() {
             {error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 {error}
+              </Text>
+            ) : null}
+
+            {checkoutError ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {checkoutError}
               </Text>
             ) : null}
 
