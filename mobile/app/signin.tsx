@@ -1,45 +1,55 @@
 /*
-  FRD F16. The sign-in screen.
+  FRD F16. The full-screen Sign in screen.
 
-  One button, because there is exactly one way to sign in: Google, through the
-  website's own sign-in in the system browser. The app has no password field, no
-  social buttons and no account creation.
+  Sign-in is MANDATORY: splash -> Sign in -> the app. Browsing signed out is not
+  a thing (PRD 4A), so this screen has no skip.
 
-  The privacy line is the same wording the website's /signin page uses.
+  It is deliberately plain: the logo, one line of tagline, and one button. There
+  is no password field and no social buttons, because there is exactly one way in
+  and it is Google, through the website's own sign-in in the system browser.
+
+  After a failure the button stays exactly where it is and relabels itself, so the
+  shopper is never left hunting for a way to retry on a screen that appears to
+  have no way forward.
 */
 
-import { useCallback, useEffect } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ShieldCheck } from "lucide-react-native";
 
 import { useSignIn } from "@/hooks/use-sign-in";
-import { useSession } from "@/store/session";
-import { colors, font } from "@/theme/tokens";
+import { colors, font, ICON_STROKE_WIDTH, MIN_TAP_TARGET } from "@/theme/tokens";
 
 export default function SignInScreen() {
-  const state = useSession((store) => store.state);
   const { signIn, busy, error } = useSignIn();
 
-  /* Already signed in: never leave someone staring at this screen. */
-  useFocusEffect(
-    useCallback(() => {
-      if (state === "signedIn") router.replace("/account");
-    }, [state]),
-  );
-
-  useEffect(() => {
-    if (state === "signedIn") router.replace("/account");
-  }, [state]);
-
   return (
-    <View style={styles.screen}>
+    <ScrollView
+      contentContainerStyle={styles.screen}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.inner}>
-        <Text style={styles.wordmark}>JAYNIE&apos;S</Text>
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Jaynie's Collection"
+        />
+
         <Text style={styles.heading}>Sign in</Text>
-        <Text style={styles.sub}>
-          Sign in to see your orders and keep your cart across devices.
+
+        {/* One line, as asked: what this is, not a paragraph. */}
+        <Text style={styles.tagline}>
+          Handmade ready-to-wear, yours on every device.
         </Text>
+
+        {error ? (
+          <View
+            accessibilityRole="alert"
+            style={styles.errorBox}
+          >
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
@@ -47,54 +57,45 @@ export default function SignInScreen() {
           disabled={busy}
           onPress={() => void signIn()}
           style={({ pressed }) => [
-            styles.googleButton,
+            styles.button,
             pressed && styles.pressed,
             busy && styles.disabled,
           ]}
         >
-          {busy ? (
-            <ActivityIndicator color={colors.onyx} />
-          ) : (
-            <>
-              <ShieldCheck size={20} strokeWidth={1.5} color={colors.onyx} />
-              <Text style={styles.googleButtonText}>
-                {busy ? "Opening Google sign-in..." : "Continue with Google"}
-              </Text>
-            </>
-          )}
-        </Pressable>
-
-        {error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {error}
+          <ShieldCheck
+            size={20}
+            strokeWidth={ICON_STROKE_WIDTH}
+            color={colors.onyx}
+          />
+          <Text style={styles.buttonText}>
+            {busy ? "Opening Google sign-in..." : "Sign in again"}
           </Text>
-        ) : null}
+        </Pressable>
 
         <Text style={styles.privacy}>
           We only use your name, email and photo, to fill in checkout.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.onyx,
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
+    paddingVertical: 48,
   },
-  wordmark: {
-    fontFamily: font.black,
-    fontSize: 26,
-    letterSpacing: 2,
-    color: colors.gold,
-    textAlign: "center",
-    marginBottom: 32,
+  logo: {
+    width: 200,
+    height: 132,
+    marginBottom: 24,
   },
   heading: {
     fontFamily: font.black,
@@ -102,9 +103,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: -0.01,
     color: colors.white,
-    textAlign: "center",
   },
-  sub: {
+  tagline: {
     fontFamily: font.regular,
     fontSize: 15,
     lineHeight: 22,
@@ -112,19 +112,34 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
   },
-  googleButton: {
-    /* DESIGN.md section 1 rule 6: 48px tall, never under the 44px minimum. */
-    minHeight: 48,
+  /* A real box, so a failure is impossible to miss on a dark screen. */
+  errorBox: {
+    alignSelf: "stretch",
+    backgroundColor: colors.highlight,
+    borderRadius: 4,
+    padding: 12,
+    marginTop: 24,
+  },
+  errorText: {
+    fontFamily: font.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onyx,
+    textAlign: "center",
+  },
+  button: {
+    minHeight: 52,
+    alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     backgroundColor: colors.white,
     borderRadius: 4,
-    marginTop: 32,
-    paddingHorizontal: 20,
+    marginTop: 24,
+    minWidth: MIN_TAP_TARGET,
   },
-  googleButtonText: {
+  buttonText: {
     fontFamily: font.semibold,
     fontSize: 15,
     color: colors.onyx,
@@ -134,14 +149,6 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.7,
-  },
-  error: {
-    fontFamily: font.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.highlight,
-    textAlign: "center",
-    marginTop: 16,
   },
   privacy: {
     fontFamily: font.regular,

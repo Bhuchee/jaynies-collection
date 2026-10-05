@@ -71,8 +71,17 @@ export default function RootLayout() {
           default screen once signed in, because browsing never needs an account
           and the cart badge has to be live on every tab.
         */}
+        {/*
+          The launch screen, branded and in-app. Expo Go shows its OWN splash, so
+          this route is what the shopper actually sees first.
+        */}
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="splash" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="signin"
+          options={{ headerShown: false, presentation: "modal" }}
+        />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="signin" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="product/[slug]" options={{ title: "" }} />
       </Stack>
     </SafeAreaProvider>

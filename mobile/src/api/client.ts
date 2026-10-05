@@ -43,6 +43,36 @@ export class ApiError extends Error {
 }
 
 /**
+ * The server could not be reached at all: DNS, no network, wrong host, or the
+ * request timed out.
+ *
+ * This is deliberately a DIFFERENT class from ApiError, because "we never got an
+ * answer" and "the server said no" need different fixes from the shopper and
+ * different words on screen. Folding a network failure into a generic 500 is
+ * what made a wrong API host look like a broken server.
+ */
+export class NetworkError extends Error {
+  readonly host: string;
+
+  constructor(host: string, cause: unknown) {
+    super(`Could not reach ${host}.`);
+    this.name = "NetworkError";
+    this.host = host;
+    /* Keep the underlying reason for the console, never for the UI. */
+    this.cause = cause;
+  }
+}
+
+/** The host the app is talking to, for error messages. */
+export function apiHost(): string {
+  try {
+    return new URL(API_URL).host;
+  } catch {
+    return API_URL;
+  }
+}
+
+/**
  * One place every request goes through, so the bearer token, the timeout and the
  * error shape are handled identically everywhere.
  *
@@ -76,21 +106,46 @@ export async function apiFetch<T>(
     });
 
     if (!response.ok) {
-      let code = "unknown";
-      let message = "Something went wrong. Please try again.";
+      /*
+        A 404 in particular is worth naming out loud. A wrong API host resolves and
+        answers, but with a 404 that looks identical to "the server is broken"
+        unless we say what actually happened.
+      */
+      let code = `http_${response.status}`;
+      let message =
+        response.status === 404
+          ? `Not found on ${apiHost()}. Check the address in mobile/.env.`
+          : `The server returned ${response.status}.`;
 
       try {
         const payload = (await response.json()) as ApiErrorBody;
         if (payload?.error?.code) code = payload.error.code;
+        /* The server's own message wins when it sent one, because it is written
+           for a shopper ("That piece is not available"). */
         if (payload?.error?.message) message = payload.error.message;
       } catch {
-        /* keep the generic message */
+        /* keep the status-based message */
       }
 
+      console.warn(`[api] ${method} ${path} -> ${response.status} (${code})`);
       throw new ApiError(response.status, code, message);
     }
 
     return (await response.json()) as T;
+  } catch (error) {
+    /*
+      fetch only rejects when there was no usable response: bad host, no network,
+      or the abort above. Anything that got a status already threw an ApiError
+      above and must not be relabelled as a network problem.
+    */
+    if (error instanceof ApiError) throw error;
+
+    const aborted = error instanceof Error && error.name === "AbortError";
+    console.warn(
+      `[api] ${method} ${path} never reached ${apiHost()} (${aborted ? "timed out" : String(error)})`,
+    );
+
+    throw new NetworkError(apiHost(), error);
   } finally {
     clearTimeout(timeout);
   }
@@ -156,6 +211,23 @@ export function deleteMobileSession(token: string) {
     method: "DELETE",
     token,
   });
+}
+
+/**
+ * Resolves an image path from the API into something fetchable.
+ *
+ * The API already returns ABSOLUTE urls, built from NEXT_PUBLIC_SITE_URL on the
+ * server. This is the defensive path for the other case: a relative
+ * "/products/x.webp" has no meaning to the app, because the app has no origin of
+ * its own to resolve it against, so it is resolved against the API base here.
+ */
+export function resolveImageUrl(imageUrl: string | null): string | null {
+  if (!imageUrl) return null;
+
+  /* Already absolute (http, https or exp): nothing to do. */
+  if (/^[a-z][a-z0-9+.-]*:/i.test(imageUrl)) return imageUrl;
+
+  return `${API_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }
 
 /** FRD F14 and F17. The cart the app polls every two seconds. */

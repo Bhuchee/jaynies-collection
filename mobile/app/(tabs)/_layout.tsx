@@ -14,6 +14,8 @@
 */
 
 import { Tabs } from "expo-router";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { LayoutGrid, ShoppingBag, UserRound } from "lucide-react-native";
 
 import { useLiveCart } from "@/hooks/use-live-cart";
@@ -24,14 +26,23 @@ import { colors, font, ICON_STROKE_WIDTH } from "@/theme/tokens";
 export default function TabsLayout() {
   useLiveCart();
 
+  const router = useRouter();
   const state = useSession((store) => store.state);
   const signedIn = state === "signedIn";
 
-  /*
-    A signed-out shopper still browses the shop, so the tab bar is always shown.
-    Only the badge is conditional.
-  */
+  /* The badge is the total quantity, matching the website. */
   const itemCount = useCartStore((store) => store.itemCount);
+
+  useEffect(() => {
+    if (!signedIn && state !== "loading") router.replace("/signin");
+  }, [signedIn, state, router]);
+
+  /*
+    Signed out means /me rejected the token, or there never was one. Sign-in is
+    mandatory now (PRD 4A), so the tabs are not reachable signed out: the shopper
+    goes to the full-screen Sign in rather than into a shop with no cart.
+  */
+  if (!signedIn) return null;
 
   return (
     <Tabs

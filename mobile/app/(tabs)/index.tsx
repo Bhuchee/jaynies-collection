@@ -27,6 +27,7 @@ import {
   GENDER_OPTIONS,
 } from "@/components/FilterChips";
 import { ProductCard } from "@/components/ProductCard";
+import { ErrorState } from "@/components/ErrorState";
 import { getProducts } from "@/api/client";
 import type { ProductDto } from "@/api/types";
 import { colors, font, ICON_STROKE_WIDTH, MIN_TAP_TARGET } from "@/theme/tokens";
@@ -168,11 +169,22 @@ export default function ShopScreen() {
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator style={styles.empty} color={colors.onyx} />
+          ) : error ? (
+            /*
+              A failure must never render as an empty shop. The shopper has to be
+              able to tell "no such pieces" apart from "we could not ask".
+            */
+            <ErrorState
+              title="Could not load the shop"
+              message={error}
+              busy={loading}
+              onRetry={() => void load()}
+            />
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>Nothing here yet</Text>
               <Text style={styles.emptyBody}>
-                {error ?? "Try another filter, or clear the search."}
+                Try another filter, or clear the search.
               </Text>
             </View>
           )

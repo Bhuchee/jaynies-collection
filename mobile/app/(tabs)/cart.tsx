@@ -32,6 +32,7 @@ import { Trash2 } from "lucide-react-native";
 
 import { ProductImage } from "@/components/ProductImage";
 import { QuantityStepper } from "@/components/QuantityStepper";
+import { ErrorState } from "@/components/ErrorState";
 import { checkoutUrl } from "@/api/client";
 import { useCartStore } from "@/store/cart";
 import { useSession } from "@/store/session";
@@ -50,6 +51,7 @@ export default function CartScreen() {
   const loading = useCartStore((store) => store.loading);
   const error = useCartStore((store) => store.error);
   const lastUpdatedAt = useCartStore((store) => store.lastUpdatedAt);
+  const load = useCartStore((store) => store.load);
   const setQuantity = useCartStore((store) => store.setQuantity);
   const remove = useCartStore((store) => store.remove);
 
@@ -78,6 +80,7 @@ export default function CartScreen() {
   }
 
   if (!signedIn) {
+    /* Reached only if a 401 lands while the tab is already open. */
     return (
       <View style={styles.center}>
         <Text style={styles.emptyTitle}>Sign in to see your cart</Text>
@@ -86,11 +89,33 @@ export default function CartScreen() {
         </Text>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push("/signin")}
+          onPress={() => router.replace("/signin")}
           style={styles.primary}
         >
           <Text style={styles.primaryText}>Sign in</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  /*
+    A failed read must not look like an empty cart. Retrying re-runs exactly the
+    request that failed, through the same 2-second poll.
+  */
+  if (error && lines.length === 0) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.header}>
+          <Text style={styles.heading}>Your cart</Text>
+        </View>
+        <ErrorState
+          title="Could not load your cart"
+          message={error}
+          busy={loading}
+          onRetry={() => {
+            if (token) void load(token);
+          }}
+        />
       </View>
     );
   }

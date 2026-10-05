@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { Shirt } from "lucide-react-native";
 
+import { resolveImageUrl } from "@/api/client";
 import { colors, ICON_STROKE_WIDTH } from "@/theme/tokens";
 
 type Props = {
@@ -25,7 +26,11 @@ export function ProductImage({ imageUrl, aspectRatio = 3 / 4, rounded = true }: 
      rather than a broken-image icon. */
   const [failed, setFailed] = useState(false);
 
-  const showPlaceholder = !imageUrl || failed;
+  /* The API returns absolute urls, but a relative "/products/x.webp" is resolved
+     against the API base here, because the app has no origin of its own. */
+  const resolved = resolveImageUrl(imageUrl);
+
+  const showPlaceholder = !resolved || failed;
 
   return (
     <View
@@ -41,7 +46,7 @@ export function ProductImage({ imageUrl, aspectRatio = 3 / 4, rounded = true }: 
         </View>
       ) : (
         <Image
-          source={{ uri: imageUrl }}
+          source={{ uri: resolved }}
           style={styles.image}
           resizeMode="cover"
           onError={() => setFailed(true)}

@@ -311,11 +311,18 @@ mobile/
 | `/cart` | Live lines with image, name, size, stepper and remove, subtotal, "Delivery calculated at checkout", and a **Checkout** button that hands off to the website (below). |
 | `/orders` | The shopper's orders, newest first: order number, date, status badge, item count, total, first thumbnail. |
 | `/orders/[orderNumber]` | Full order: items, subtotal, delivery ("To be confirmed" for international), total, delivery details, status. |
-| `/signin` | Logo, one **Continue with Google** button, and the privacy line from the website's sign-in page. |
+| `/signin` | **Full-screen and mandatory.** Logo, one line of tagline, a **Continue with Google** button, and a **Sign in again** path after a failure. Reached from the splash when there is no valid token. |
+| `splash` | The in-app launch screen: gold logo on Onyx for about 1.2s while fonts load and the token is checked. The app's entry point. |
 | `/account` | Name and email, sign out, WhatsApp and Instagram links, the delivery fee summary, and the app version. |
 
 **Behaviour**
-- **Sign-in and the store:** on cold start the app reads the token from secure store and calls `GET /api/v1/me`. A `200` goes to the shop; a `401` clears the token and goes to `/signin`.
+- **The launch flow is: in-app splash, then a full-screen Sign in, then the app.** There is no signed-out browsing.
+  1. **Splash (about 1.2 seconds).** The gold logo on Onyx, shown while Poppins loads and the stored token is validated against `/api/v1/me`. It is a floor, never a delay on top of real work: if the check is slow the splash waits, so a failure is not hidden behind it. **Expo Go cannot show a custom native splash** — the splash in that app belongs to Expo Go and is identical for every project — so the branded first screen has to be in-app. The native splash is configured in `app.json` as well, for a real build.
+  2. **A valid token goes to the tabs. No token, or a 401, goes to Sign in.**
+  3. **Sign in** shows the logo, one line of tagline, a **Continue with Google** button, and the same button relabelled **Sign in again** after a failure, so the shopper is never left without a way forward.
+- **Every failure has its own message.** A generic "something went wrong" is not acceptable: it once hid a wrong API host behind a 404. The sign-in flow distinguishes **could not reach the server** (naming the host), **start rejected** (status and error code), **cancelled by the user**, **state mismatch**, and **exchange rejected** (including an expired or already-used code). The same details go to the dev console. **No token, one-time code or code_verifier is ever logged.**
+- **A failed load is never rendered as an empty list.** The shop and the cart both show a specific error with a **Retry** button that repeats the exact request that failed, so "no such pieces" is never confused with "we could not ask the server".
+- **Sign-in and the store:** on cold start the app reads the token from secure store and calls `GET /api/v1/me`. A `200` goes to the shop; a `401` clears the token and shows `/signin`.
 - **The cart is server-authoritative.** There is no local cart in the app. Every add, quantity change and remove calls the API and replaces local state with the response, the same one-step adoption the website uses. No offline write queue.
 - **Checkout is a hand-off, and it opens the system browser.** The Checkout button opens `${SITE_URL}/checkout` with `expo-web-browser`.
   - **The website authenticates with a cookie session, not with the app's bearer token, so the browser may ask for Google sign-in again even though the shopper is already signed in to the app. This is expected behaviour, not a defect.** The app cannot inject a cookie into the system browser, and the two sessions are deliberately independent (F15). It is documented in the README and demonstrated as a step in the L3-5 phone script, so it is never treated as a bug to be "fixed" by weakening sign-in.

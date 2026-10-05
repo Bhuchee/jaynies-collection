@@ -55,9 +55,18 @@ your phone on the same Wi-Fi as this computer.
 ```bash
 cd mobile
 npm install
-cp .env.example .env          # then put your Vercel URL in EXPO_PUBLIC_API_URL
-npm start                     # shows a QR code: scan it with Expo Go on the phone
+cp .env.example .env     # EXPO_PUBLIC_API_URL is already set to the live site
+npm start                # shows a QR code: scan it with Expo Go on the phone
 ```
+
+**The first thing to check if anything fails:** `mobile/.env` must contain
+`EXPO_PUBLIC_API_URL=https://jaynies-collection.vercel.app`. It is gitignored, so
+it is yours to keep correct. A wrong value there is subtle: a mistyped host still
+resolves and answers, but every API call comes back `404`, and the app shows
+"Could not load the shop" or "Not found on <host>".
+
+**Launch flow:** splash (about 1.2s) -> Sign in -> the app. Sign-in is
+mandatory; there is no browsing while signed out.
 
 **What to scan:** the QR code in the terminal, using the Expo Go app's built-in
 scanner (open Expo Go, tap **Scan QR code**, point the phone at the screen).
