@@ -66,12 +66,14 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.white },
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="signin"
-          options={{ headerShown: false, presentation: "modal" }}
-        />
-        <Stack.Screen name="account" options={{ title: "Account" }} />
+        {/*
+          The tab group is the app's shell: shop, cart and account. It is the
+          default screen once signed in, because browsing never needs an account
+          and the cart badge has to be live on every tab.
+        */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="signin" options={{ headerShown: false, presentation: "modal" }} />
+        <Stack.Screen name="product/[slug]" options={{ title: "" }} />
       </Stack>
     </SafeAreaProvider>
   );

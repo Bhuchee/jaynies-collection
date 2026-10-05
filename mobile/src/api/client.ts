@@ -15,7 +15,7 @@
   a missing value is a loud error rather than a silent fallback.
 */
 
-import type { SavedCartLine } from "./types";
+import type { ProductDto, SavedCartLine } from "./types";
 
 const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -168,3 +168,86 @@ export type CartResponse = {
   itemCount: number;
   subtotalKobo: number;
 };
+
+/* ------------------------------------------------------------- Catalogue */
+
+/*
+  FRD F16. The shop's filters, matching the website's exactly: the same category
+  slugs, the same gender values, and the same `q` search. The server reuses
+  parseShopFilters, so the app cannot drift from the website here.
+*/
+export type ProductFilters = {
+  category?: string;
+  gender?: string;
+  q?: string;
+};
+
+export function getProducts(filters: ProductFilters = {}) {
+  const query = new URLSearchParams();
+
+  if (filters.category) query.set("category", filters.category);
+  if (filters.gender) query.set("gender", filters.gender);
+  if (filters.q) query.set("q", filters.q);
+
+  const suffix = query.toString();
+
+  return apiFetch<{ products: ProductDto[]; total: number }>(
+    `/api/v1/products${suffix ? `?${suffix}` : ""}`,
+  );
+}
+
+export function getProductBySlug(slug: string) {
+  return apiFetch<{ product: ProductDto }>(
+    `/api/v1/products/${encodeURIComponent(slug)}`,
+  );
+}
+
+/* ------------------------------------------------------- Cart mutations */
+
+/*
+  Every cart mutation returns the WHOLE cart, so the client replaces its state
+  with the server's answer in one step and never has to guess the new total
+  (FRD F14). Totals are always recalculated by the server.
+*/
+export type CartLineInput = {
+  productId: string;
+  size: string;
+  quantity: number;
+};
+
+export function addCartItem(token: string, input: CartLineInput) {
+  return apiFetch<CartResponse>("/api/v1/cart/items", {
+    method: "POST",
+    token,
+    body: input,
+  });
+}
+
+export function setCartItemQuantity(token: string, input: CartLineInput) {
+  return apiFetch<CartResponse>("/api/v1/cart/items", {
+    method: "PATCH",
+    token,
+    body: input,
+  });
+}
+
+export function removeCartItem(
+  token: string,
+  input: { productId: string; size: string },
+) {
+  return apiFetch<CartResponse>("/api/v1/cart/items", {
+    method: "DELETE",
+    token,
+    body: input,
+  });
+}
+
+/**
+ * FRD F16. The website's checkout, opened in the system browser.
+ *
+ * The app hands off rather than rebuilding checkout, so there is one place that
+ * calculates an order total and one place that sends the email.
+ */
+export function checkoutUrl(): string {
+  return `${API_URL}/checkout`;
+}

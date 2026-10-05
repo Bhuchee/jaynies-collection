@@ -20,6 +20,12 @@ export type SavedCartLine = {
   quantity: number;
 };
 
+export type CartResponse = {
+  lines: SavedCartLine[];
+  itemCount: number;
+  subtotalKobo: number;
+};
+
 export type ProductDto = {
   id: string;
   slug: string;

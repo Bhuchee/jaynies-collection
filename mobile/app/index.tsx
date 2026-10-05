@@ -3,7 +3,7 @@
 
   While the session is still being restored this shows the wordmark and nothing
   else, because guessing would flash the sign-in screen at someone who is already
-  signed in. Once the state is known it routes accordingly.
+  signed in. Browsing needs no account, so a RESTORED session lands on the shop.
 */
 
 import { useEffect } from "react";
@@ -17,8 +17,10 @@ export default function IndexScreen() {
   const state = useSession((store) => store.state);
 
   useEffect(() => {
-    if (state === "signedIn") router.replace("/account");
-    if (state === "signedOut") router.replace("/signin");
+    /* Both states land on the tabs: the shop is browsable signed out, and the
+       cart tab prompts for sign-in by itself. */
+    if (state === "signedIn") router.replace("/(tabs)");
+    if (state === "signedOut") router.replace("/(tabs)");
   }, [state]);
 
   return (

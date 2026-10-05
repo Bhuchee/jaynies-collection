@@ -30,7 +30,8 @@ export default function AccountScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  /* Signed out means /me rejected the token, so send them to sign in. */
+  /* Signed out means /me rejected the token, so send them to sign in. The cart tab
+     keeps them in the app rather than bouncing them to the shop. */
   useFocusEffect(
     useCallback(() => {
       if (state === "signedOut") router.replace("/signin");
